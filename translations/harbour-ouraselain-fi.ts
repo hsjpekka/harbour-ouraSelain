@@ -309,7 +309,7 @@ The app cannot be used for reading the data from the ring,nor to upload the data
     </message>
 </context>
 <context>
-    <name>harbour-oura</name>
+    <name>harbour-ouraselain</name>
     <message>
         <source>Clearing token!</source>
         <translation type="unfinished"></translation>
