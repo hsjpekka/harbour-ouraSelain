@@ -1,7 +1,6 @@
 #include <sailfishapp.h>
 #include <QtQuick>
 #include <QScopedPointer>
-#include "db.h"
 #include "ouraapi.h"
 
 int main(int argc, char *argv[])
