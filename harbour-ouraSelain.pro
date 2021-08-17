@@ -33,6 +33,7 @@ DISTFILES += \
     qml/pages/activityPage.qml \
     qml/pages/FirstPage.qml \
     qml/pages/Info.qml \
+    qml/pages/manualPage.qml \
     qml/pages/readinessPage.qml \
     qml/pages/Settings.qml \
     qml/pages/sleepPage.qml \

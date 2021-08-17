@@ -8,20 +8,19 @@ ApplicationWindow
 {
     id: applicationWindow
     initialPage: Component {
-        FirstPage { }
+        FirstPage {
+            onRefreshOuraCloud: downloadOuraCloud()
+            onOpenSettings: setUpNow()
+        }
     }
     cover: Qt.resolvedUrl("cover/CoverPage.qml")
-    allowedOrientations: defaultAllowedOrientations
+    //allowedOrientations: defaultAllowedOrientations
     Component.onCompleted: {
         readDb()
         if (personalAccessToken > "") {
-            console.log("uusien tietojen luku");
             downloadOuraCloud()
         } else {
-            var dialog = applicationWindow.pageStack.push(Qt.resolvedUrl("pages/Settings.qml"))
-            //dialog.accepted.connect(function () {
-            //} )
-            //setUp.start()
+            setUpNow()
         }
         startingUp = false
     }
@@ -30,45 +29,61 @@ ApplicationWindow
     property date latestStored: new Date(0)
     property string personalAccessToken: ""
     property bool startingUp: true
-    onPersonalAccessTokenChanged: {
-        if (!startingUp && personalAccessToken > "") {
-            //downloadOuraCloud()
+
+    signal storedDataRead()
+
+    Timer {
+        interval: 10*1000
+        repeat: false // true to read few records at a time
+        running: true
+        onTriggered: {
+            var oldRecs, i=0, iN;
+
+            oldRecs = DataB.readCloudDb(); // read all || since date1 || date1 - date2
+            while (i < oldRecs.rows.length) {
+                oura.storeOldRecords(oldRecs.rows[i][DataB.keyType], oldRecs.rows[i][DataB.keyRec]);
+                i++;
+            }
+
+            if (oldRecs.rows.length > 0) {
+                console.log("ensimmäinen tallenne " + oura.firstDate());
+                console.log("viimeinen tallenne " + oura.lastDate());
+                storedDataRead();
+            }
         }
     }
-
-    signal ouraActivityReady();
-    signal ouraBedTimesReady();
-    signal ouraReadinessReady();
-    signal ouraSleepReady();
-    signal ouraUserReady();
 
     Connections {
         target: oura
         onFinishedActivity: {
             console.log("onFinishedActivity")
             DataB.storeCloudRecords(DataB.keyActivity, oura.printActivity())
-            ouraActivityReady()
+            //ouraActivityReady()
         }
         onFinishedSleep: {
             console.log("onFinishedSleep")
             DataB.storeCloudRecords(DataB.keySleep, oura.printSleep())
-            ouraSleepReady()
+            //ouraSleepReady()
         }
         onFinishedReadiness: {
             console.log("onFinishedReadiness")
             DataB.storeCloudRecords(DataB.keyReadiness, oura.printReadiness())
-            ouraReadinessReady()
+            //ouraReadinessReady()
         }
         onFinishedBedTimes: {
             console.log("onFinishedBedTimes")
             DataB.storeCloudRecords(DataB.keyBedTime, oura.printBedTimes())
-            ouraBedTimesReady()
+            //ouraBedTimesReady()
         }
         onFinishedInfo: {
             console.log("onFinishedInfo")
             DataB.storeCloudRecords(DataB.keyUserInfo, oura.printInfo())
-            ouraUserReady()
+            //ouraUserReady()
         }
+    }
+
+    RemorsePopup {
+        id: remorse
     }
 
     function downloadOuraCloud(){
@@ -77,6 +92,7 @@ ApplicationWindow
     }
 
     function readDb() {
+        var oldRecs, i=0, iN;
         if(db === null) {
             try {
                 db = LocalStorage.openDatabaseSync("oura", "0.1", "daily records", 10000);
@@ -89,20 +105,27 @@ ApplicationWindow
         DataB.dbas = db;
         DataB.createTables();
         DataB.readSettingsDb();
-        console.log("vanhojen tietojen luku");
-        DataB.readCloudDb(); // read all || since date1 || date1 - date2
-
         personalAccessToken = DataB.getSetting(DataB.keyPersonalToken, "");
         if (personalAccessToken > "") {
             oura.setPersonalAccessToken(personalAccessToken);
         }
-        //DataB.log(personalAccessToken);
 
+        //console.log("vanhojen tietojen luku");
+        //oldRecs = DataB.readCloudDb(); // read all || since date1 || date1 - date2
+        //while (i < oldRecs.rows.length) {
+        //    oura.storeOldRecords(oldRecs.rows[i][DataB.keyType], oldRecs.rows[i][DataB.keyRec]);
+        //    i++;
+        //}
+
+        //if (oldRecs.rows.length > 0) {
+        //    console.log("ensimmäinen tallennettu " + oura.firstDate());
+        //    console.log("viimeinen tallennettu " + oura.lastDate());
+        //}
         return;
     }
 
     function setUpNow() {
-        var subPage = pageContainer.push(Qt.resolvedUrl("Settings.qml"), {
+        var subPage = pageStack.push(Qt.resolvedUrl("pages/Settings.qml"), {
                                              "token": personalAccessToken
                                          })
         subPage.setToken.connect(function () {
@@ -117,9 +140,9 @@ ApplicationWindow
 
             remorse.execute(msg, function() {
                 DataB.updateSettings(DataB.keyPersonalToken, newTkn)
-                personalAccessToken = newTkn
                 oura.setPersonalAccessToken(newTkn)
-                //downloadOuraCloud()
+                personalAccessToken = newTkn
+                downloadOuraCloud()
             })
         })
 

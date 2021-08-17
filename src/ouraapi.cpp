@@ -98,7 +98,7 @@ int ouraApi::addRecord(ContentType content, QJsonValue newRec)
         dateNew = newVal.toString();
     }
     if (content == Readiness || content == Sleep) {
-        newVal = newRec.toObject().value(keySummaryDate);
+        newVal = newRec.toObject().value(periodKey);
         if (newVal.isDouble()) {
             newPeriod = newVal.toInt();
         }
@@ -129,8 +129,10 @@ int ouraApi::addRecord(ContentType content, QJsonValue newRec)
         arr->insert(i + 1, newRec);
     } else if (newYMDP == oldYMDP) {
         // update
+        //qInfo() << "päivittää tiedot" << content << newYMDP;
         arr->replace(i, newRec);
     } else {
+        //qInfo() << "uusi kooste" << content << newYMDP;
         arr->insert(0, newRec);
     }
 
@@ -155,53 +157,64 @@ int ouraApi::addRecordList(ContentType content, QJsonArray array)
 
 double ouraApi::average(QString type, QString key, int year1, int month1, int day1, int days)
 {
-    // returns the average value of key in the last days - if days = 0, average = day1.key
-    // defaults to the last week excluding today
-    double result=0;
+    // returns the average value of key in the last days
+    // defaults to the average of the previous 7 days
+    // days = number of days counting backwards from the given date
+    double result=0, addition=0;
     QJsonValue jsonVal;
     QDate date(year1, month1, day1);
     ContentType cType;
-    int i;
-
-    //qInfo() << "alku average()" << key << day1;
-
-    if (days == -1)
-        return 0;
-
-    if (!date.isValid()) { // year == 0
-        date = QDate::currentDate().addDays(-1);
-    }
+    int i, missingDays=0;
 
     cType = valueType(type);
 
-    for (i=0; i<days; i++) {
-        if (cType == Sleep) {
-            result += averageSleep(key, date.addDays(-i));
-        } else if (cType == Readiness) {
-            result += averageReadiness(key, date.addDays(-i));
+    if (!date.isValid()) { // year == 0
+        if (cType == Activity || cType == BedTimes || cType == Readiness || cType == Sleep) {
+            date = lastDate(cType);
         } else {
-            jsonVal = valueFinder(cType, key, date.addDays(-i));
-            result += jsonToDouble(jsonVal);
+            date = QDate::currentDate().addDays(-1);
         }
     }
 
-    //qInfo() << "loppu average()" << key << day1 << result;
+    for (i=0; i<days; i++) {
+        if (cType == Sleep) {
+            addition = averageSleep(key, date.addDays(-i));
+        } else if (cType == Readiness) {
+            addition = averageReadiness(key, date.addDays(-i));
+        } else {
+            jsonVal = valueFinder(cType, key, date.addDays(-i));
+            addition = jsonToDouble(jsonVal);
+        }
 
-    return result/(days + 1);
+        if (addition == 0) {
+            missingDays++;
+        }
+        result += addition;
+    }
+
+    if (missingDays >= days) {
+        missingDays = days - 1;
+    }
+
+    return result/(days - missingDays);
 }
 
 double ouraApi::averageReadiness(QString key, QDate date)
 {
-    int i, N;
+    int i, j, N;
     double result=0;
     QJsonValue jsonVal;
 
     N = readinessCount(date);
-    //qInfo() << "alku averageReadiness()" << key << date << N;
+    i = iSummary(Readiness, date, 0);
+    j = 0;
+    qInfo() << "alku " << key << date << "i=" << i << "N=" << N;
 
-    for (i=iSummary(Readiness, date, 0); i<N; i++) {
+    while (j < N) {
         jsonVal = valueReadiness(key, date, i);
         result += jsonToDouble(jsonVal);
+        i++;
+        j++;
     }
 
     if (N == 0) {
@@ -453,10 +466,15 @@ void ouraApi::downloadOuraCloud()
     //iDownloads = 0;
     //downloadNext();
     download(User);
-    //download(Activity);
-    //download(Readiness);
-    //download(Sleep);
-    //download(BedTimes);
+    isLoadingInfo = true;
+    download(Activity);
+    isLoadingActivity = true;
+    download(Readiness);
+    isLoadingReadiness = true;
+    download(Sleep);
+    isLoadingSleep = true;
+    download(BedTimes);
+    isLoadingBedTimes = true;
     return;
 }
 
@@ -521,13 +539,18 @@ QTime ouraApi::endTime(QString summaryType, QDate date)
     return time.time();
 }
 
+QDate ouraApi::firstDate(QString summaryType, int first) // the first or last date in the latest summary reply
+{
+    return firstDateIn(valueType(summaryType), first);
+}
+
 QDate ouraApi::firstDate(int first) // the first or last date in the latest summary reply
 {
     QDate date1, date2;
     QJsonValue locVal;
     QJsonArray locArray;
     QJsonObject locObject;
-    QString str = "first date from: ";
+    //QString str = "first date from: ";
     /*
     //qInfo() << "a." << userActivity.keys() << "s." << userSleep.keys() << "r." << userReadiness.keys();
     //qInfo() << "a s r " << userActivity.contains(keyActivity) << userSleep.contains(keySleep) << userReadiness.contains(keyReadiness);
@@ -600,9 +623,9 @@ QDate ouraApi::firstDate(int first) // the first or last date in the latest summ
     date1 = firstDateIn(Activity, first);
     date2 = firstDateIn(BedTimes, first);
     if (date1.isValid()) {
-        str.append("activity ");
+        //str.append("activity " +  date1.toString(dateFormat) + " ");
         if (date2.isValid() && date2.daysTo(date1) > 0) {
-            str.append("bedTimes ");
+            //str.append("bedTimes ");
             date1 = date2;
         }
     } else {
@@ -611,7 +634,7 @@ QDate ouraApi::firstDate(int first) // the first or last date in the latest summ
     date2 = firstDateIn(Readiness, first);
     if (date1.isValid()) {
         if (date2.isValid() && date2.daysTo(date1) > 0) {
-            str.append("readiness ");
+            //str.append("readiness ");
             date1 = date2;
         }
     } else {
@@ -620,18 +643,19 @@ QDate ouraApi::firstDate(int first) // the first or last date in the latest summ
     date2 = firstDateIn(Sleep, first);
     if (date1.isValid()) {
         if (date2.isValid() && date2.daysTo(date1) > 0) {
-            str.append("sleep");
+            //str.append("sleep");
             date1 = date2;
         }
     } else {
-        str.append("sleep");
+        //str.append("sleep");
         date1 = date2;
     }
-    qInfo() << str << date1.toString(dateFormat);
+    //qInfo() << str << date1.toString(dateFormat);
     return date1;
 }
 
-QDate ouraApi::firstDateIn(ContentType type, int first) // the first or last date in the latest summary reply
+QDate ouraApi::firstDateIn(ContentType type, int first)
+// the first or last date in the latest summary reply
 {
     QDate date1(0,0,0);
     int i, iN;
@@ -665,6 +689,7 @@ QDate ouraApi::firstDateIn(ContentType type, int first) // the first or last dat
     } else {
         i = iN + first;
         if (i < 0) i = 0;
+        //qInfo() << "i" << i << "iN" << iN << "first" << first;
     }
     //qInfo() << "löytyy " + keyActivity;
     date1 = dateAt(type, i);
@@ -683,17 +708,18 @@ void ouraApi::fromCloudActivity()
     cloudJson = processCloudResponse(activityReply, &jsonActivity);
     //jsonActivity.append(queryResponse);
     cloudValue = cloudJson.value(keyActivity);
-    if ( !cloudValue.isUndefined())
-        dateConsidered = lastDate();
     if (cloudValue.isArray()) {
         addRecordList(Activity, cloudValue.toArray());
     } else if (cloudValue.isObject() && !cloudJson.contains(keyError)) {
         addRecord(Activity, cloudValue);
     }
+    if ( !cloudValue.isUndefined())
+        dateConsidered = lastDate();
 
     emit finishedActivity();
+    isLoadingActivity = false;
     //downloadNext();
-    download(Readiness);
+    //download(Readiness);
     return;
 }
 
@@ -716,6 +742,7 @@ void ouraApi::fromCloudBedTimes()
         addRecord(BedTimes, cloudValue.toObject());
     }
     emit finishedBedTimes();
+    isLoadingBedTimes = false;
     //downloadNext();
     return;
 }
@@ -740,8 +767,9 @@ void ouraApi::fromCloudReadiness()
     }
     // read relevant data
     emit finishedReadiness();
+    isLoadingReadiness = false;
     //downloadNext();
-    download(Sleep);
+    //download(Sleep);
     return;
 }
 
@@ -764,8 +792,9 @@ void ouraApi::fromCloudSleep()
         addRecord(Sleep, cloudValue.toObject());
     }
     emit finishedSleep();
+    isLoadingSleep = false;
     //downloadNext();
-    download(BedTimes);
+    //download(BedTimes);
     return;
 }
 
@@ -782,8 +811,9 @@ void ouraApi::fromCloudUserInfo()
         addRecord(User, cloudJson);
     }
     emit finishedInfo();
+    isLoadingInfo = false;
     //downloadNext();
-    download(Activity);
+    //download(Activity);
     return;
 }
 
@@ -933,6 +963,32 @@ QString ouraApi::getStatus()
     return debug;
 }
 
+bool ouraApi::isLoading(QString summaryType)
+{
+    ContentType type = TypeError;
+    bool result=false;
+
+    if (summaryType == "") {
+        result = isLoadingActivity || isLoadingBedTimes || isLoadingInfo || isLoadingReadiness || isLoadingSleep;
+    } else {
+        type = valueType(summaryType);
+    }
+
+    if (type == Activity) {
+        result = isLoadingActivity;
+    } else if (type == BedTimes) {
+        result = isLoadingBedTimes;
+    } else if (type == Readiness) {
+        result = isLoadingReadiness;
+    } else if (type == Sleep) {
+        result = isLoadingSleep;
+    } else if (type == User) {
+        result = isLoadingInfo;
+    }
+
+    return result;
+}
+
 int ouraApi::iSummary(ContentType type, QDate searchDate, int i0)
 {
     // returns the index of the first list item where summary_date == searchDate
@@ -962,7 +1018,7 @@ int ouraApi::iSummary(ContentType type, QDate searchDate, int i0)
         return iResult;
     }
 
-    qInfo() << "tyyppi" << type;
+    //qInfo() << "tyyppi" << type;
     iN = table->count();
     if (iN < 1)
         return iResult;
@@ -976,18 +1032,10 @@ int ouraApi::iSummary(ContentType type, QDate searchDate, int i0)
         // one record per day is expected
         dayAtI = dateAt(type, i);
         i = dayAtI.daysTo(searchDate);
-        str.append("eka ");
-        str.append(dayAtI.toString(dateFormat));
-        str.append(" ero ");
-        str.append(QString::number(i));
 
         if (i >= iN) {
             dayAtI = dateAt(type, iN - 1);
             i = iN - searchDate.daysTo(dayAtI);
-            str.append(" vika ");
-            str.append(dayAtI.toString(dateFormat));
-            str.append(" ero ");
-            str.append(QString::number(i));
         }
 
         if (i < 0) {
@@ -996,7 +1044,7 @@ int ouraApi::iSummary(ContentType type, QDate searchDate, int i0)
             i = iN -1;
         }
 
-        qInfo() << "haku" << searchDate.toString(dateFormat) << str;
+        //qInfo() << "haku" << searchDate.toString(dateFormat) << str;
         // go to the last day before the search day
         // dayAtI = summary->at(iN-1) when entering the loop
         dayAtI = dateAt(type, i);
@@ -1010,7 +1058,7 @@ int ouraApi::iSummary(ContentType type, QDate searchDate, int i0)
             i++;
             dayAtI = dateAt(type, i);
         }
-        qInfo() << "i" << i << iN << dayAtI.toString(dateFormat);
+        //qInfo() << "i" << i << iN << dayAtI.toString(dateFormat);
     }
 
     if (i >= iN) {
@@ -1019,9 +1067,9 @@ int ouraApi::iSummary(ContentType type, QDate searchDate, int i0)
 
     while (i < iN) {
         // continue loop if daysTo < 0
-        qInfo() << "jäsen" << i;
+        //qInfo() << "jäsen" << i;
         dayAtI = dateAt(type, i);
-        if (type == Readiness || type == Sleep) {
+        if (type == Sleep) {
             jValue = valueAtI(table, i, "is_longest");
             if (jValue.isDouble()) {
                 isLongest = jValue.toInt();
@@ -1030,7 +1078,7 @@ int ouraApi::iSummary(ContentType type, QDate searchDate, int i0)
             }
         }
 
-        qInfo() << dayAtI.toString(dateFormat) << "-" << searchDate.toString(dateFormat) << "=" << daysTo << "i0" << i0;
+        //qInfo() << dayAtI.toString(dateFormat) << "-" << searchDate.toString(dateFormat) << "=" << daysTo << "i0" << i0;
         daysTo = searchDate.daysTo(dayAtI);
         if (daysTo == 0) {
             if (i0 >= 0) {
@@ -1223,13 +1271,12 @@ double ouraApi::jsonToDouble(QJsonValue val)
     double result = 0;
     QString str;
 
-    if (val.isBool()) {
-        if (val.toBool())
-            result += 1;
+    if (val.isBool() && val.toBool()) {
+        result = 1;
     } else if (val.isDouble()) {
-        result += val.toDouble();
+        result = val.toDouble();
     } else if (val.isNull()) {
-        result += 0;
+        result = 0;
     } else {
         qInfo() << "cannot convert to double" << qValueToQString(val);
     }
@@ -1237,36 +1284,90 @@ double ouraApi::jsonToDouble(QJsonValue val)
     return result;
 }
 
-QDate ouraApi::lastDate()
+QDate ouraApi::lastDate(QString summaryType, int i)
 {
-    return firstDate(-1);
+    return firstDateIn(valueType(summaryType), -(i+1));
 }
 
-QString ouraApi::myName(QString def)
+QDate ouraApi::lastDate(int i) // i = 1 == second last date
 {
-    QString name(def);
-    QJsonValue jValue;
-    if (name == "") {
-        name.append("name unknown");
+    QDate date1, date2;
+    QJsonValue locVal;
+    QJsonArray locArray;
+    QJsonObject locObject;
+
+    date1 = firstDateIn(Activity, -(i+1));
+    date2 = firstDateIn(BedTimes, -(i+1));
+    if (date1.isValid()) {
+        if (date2.isValid() && date2.daysTo(date1) < 0) {
+            date1 = date2;
+        }
+    } else {
+        date1 = date2;
     }
+    date2 = firstDateIn(Readiness, -(i+1));
+    if (date1.isValid()) {
+        if (date2.isValid() && date2.daysTo(date1) < 0) {
+            date1 = date2;
+        }
+    } else {
+        date1 = date2;
+    }
+    date2 = firstDateIn(Sleep, -(i+1));
+    if (date1.isValid()) {
+        if (date2.isValid() && date2.daysTo(date1) < 0) {
+            date1 = date2;
+        }
+    } else {
+        date1 = date2;
+    }
+
+    return date1;
+}
+
+QString ouraApi::myName(QString defVal)
+{
+    QString name;
+    QJsonValue jValue;
     jValue = valueUser("name");
     if (jValue.isNull())
         jValue = valueUser("email");
     if (jValue.isString())
         name = jValue.toString();
-    /*
-    if (userInfo.contains("name")) {
-        jValue = userInfo.value("name");
-        if (jValue.isString()) {
-            name = jValue.toString();
-        }
-    } else if (userInfo.contains("email")) {
-        jValue = userInfo.value("email");
-        if (jValue.isString()) {
-            name = jValue.toString();
-        }
-    } // */
+    else
+        name = defVal;
+
     return name;
+}
+
+int ouraApi::numberOfRecords(QString summaryType)
+{
+    ContentType type;
+    QJsonArray *table;
+    int iResult = 0;
+
+    type = valueType(summaryType);
+    if (type == Activity) {
+        table = &userActivityList;
+    } else if (type == Readiness) {
+        table = &userReadinessList;
+    } else if (type == Sleep) {
+        table = &userSleepList;
+    } else if (type == BedTimes) {
+        table = &userBedTimesList;
+    } else if (type == User) {
+        if (userInfo.keys().count() > 0) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        return iResult;
+    }
+
+    iResult = table->count();
+
+    return iResult;
 }
 
 int ouraApi::periodCount(QString content, QDate date)
@@ -1276,7 +1377,7 @@ int ouraApi::periodCount(QString content, QDate date)
         type = Sleep;
     else if (content == keyReadiness)
         type = Readiness;
-    qInfo() << "periodCount:" << type << content;
+    //qInfo() << "periodCount:" << type << content;
     return periodCount(type, date);
 }
 
@@ -1310,12 +1411,12 @@ int ouraApi::periodCount(ContentType type, QDate date)
             obj = val.toObject();
             itemDate = summaryDate(&obj);
             if (itemDate.isValid() && itemDate.daysTo(date) == 0) {
-                qInfo() << "found correct date" << date << itemDate << i;
+                //qInfo() << "found correct date" << date << itemDate << i;
                 result++; //sleep records during the day
             }
         }
         if (i == 0) {
-            qInfo() << "periodCount:" << itemDate << date;
+            //qInfo() << "periodCount:" << itemDate << date;
         }
         i++;
     }
@@ -1410,6 +1511,7 @@ QJsonObject ouraApi::processCloudResponse(QNetworkReply *reply, QString *jsonSto
     }
     reply->deleteLater();
 
+    qInfo() << jsonStorage->left(47);
     return result;
 }
 
@@ -1442,6 +1544,39 @@ int ouraApi::readinessCount(QDate date) {
     return periodCount(Readiness, date);
 }
 
+QJsonObject ouraApi::recordNr(QString summaryType, int i)
+{
+    ContentType type;
+    QJsonArray *array;
+    QJsonObject obj;
+    QJsonValue jVal;
+    QString jsonStr = "";
+
+    type = valueType(summaryType);
+    if (type == Activity) {
+        array = &userActivityList;
+    } else if (type == BedTimes) {
+        array = &userBedTimesList;
+    } else if (type == Readiness) {
+        array = &userReadinessList;
+    } else if (type == Sleep) {
+        array = &userSleepList;
+    } else {
+        return obj;
+    }
+
+    if (i < 0 || i >= array->count()) {
+        return obj;
+    }
+
+    jVal = array->at(i);
+    if (jVal.isObject()) {
+        return jVal.toObject();
+    } else {
+        return obj;
+    }
+}
+
 QString ouraApi::setAppAuthority(QString app, QString scrt)
 {
     appId = app;
@@ -1451,13 +1586,18 @@ QString ouraApi::setAppAuthority(QString app, QString scrt)
 
 QDate ouraApi::setDateConsidered(QDate date)
 {
-    dateConsidered = date;
+    if (date.isValid()) {
+        dateConsidered = date;
+    } else {
+        dateConsidered = lastDate(1);
+    }
     return dateConsidered;
 }
 
-void ouraApi::setEndDate(int year, int month, int day)
+QDate ouraApi::setEndDate(int year, int month, int day)
 {
     queryEndDate.setDate(year, month, day);
+    return queryEndDate;
 }
 
 void ouraApi::setPersonalAccessToken(QString pat)
@@ -1474,9 +1614,10 @@ void ouraApi::setStatus(const QString newStatus)
     return;
 }
 
-void ouraApi::setStartDate(int year, int month, int day)
+QDate ouraApi::setStartDate(int year, int month, int day)
 {
     queryStartDate.setDate(year, month, day);
+    return queryStartDate;
 }
 
 /*
@@ -1533,6 +1674,8 @@ int ouraApi::storeOldRecords(QString summaryType, QString recordStr)
     int result = -1;
 
     ct = valueType(summaryType);
+
+    qInfo() << summaryType << recordStr.left(40);
 
     jsonDoc = QJsonDocument::fromJson(recordStr.toUtf8());
     if (jsonDoc.isObject()) {
@@ -1603,10 +1746,10 @@ QDate ouraApi::summaryDate(QJsonObject *obj) {
     QDate result(0,0,0);
     val = checkValue(obj, "summary_date");
     if (val.isString()) {
-        result.fromString(val.toString(), dateFormat);
+        result = QDate::fromString(val.toString(), dateFormat);
     }
     if (!result.isValid())
-        qInfo() << "invalid date" << val.toString();
+        qInfo() << "invalid date" << val.toString() << result.toString(dateFormat);
     //else
     //    qInfo() << result.toString(dateFormat);
     return result;
@@ -1635,14 +1778,13 @@ QString ouraApi::value(QString summaryType, QString key, QDate date, int i0)
     QString str("");
     ContentType sType;
 
-    qInfo() << summaryType << key << date.toString(dateFormat) << "i0" << i0;
+    //qInfo() << summaryType << key << date.toString(dateFormat) << "i0" << i0;
     sType = valueType(summaryType);
     if (i0 == -2) {
         ind = iSummary(sType, date, 0);
     }
     while (doLoop) { // check for multiple summaries for the same date if i0 = -2
         result = valueFinder(sType, key, date, ind);
-        ind++;
         if (result.isBool() && result.toBool()) {
             isTrue = true;
         } else if (result.isDouble()) {
@@ -1680,6 +1822,7 @@ QString ouraApi::value(QString summaryType, QString key, QDate date, int i0)
         if (result.isNull() || result.isUndefined() || i0 > -2 || count++ > 30) {
             doLoop = false;
         }
+        ind++;
     }
     if (isTrue) // true if in any of the date summaries the value is true
         str.append("true");
@@ -1799,11 +1942,15 @@ ouraApi::ContentType ouraApi::valueType(QString summaryType)
 
 QJsonValue ouraApi::valueUser(QString key)
 {
-    return valueFinder(User, key);
+    QJsonValue jValue;
+    if (userInfo.contains(key)) {
+        jValue = userInfo.value(key);
+    }
+    return jValue;
 }
 
 int ouraApi::yyyymmddpp(QString dateStr, int period)
-{
+{ // string format yyyy-mm-dd
     int dd=0, mm=0, yyyy=0, result = 0;
     bool ok;
     yyyy = dateStr.left(4).toInt(&ok);
@@ -1814,7 +1961,7 @@ int ouraApi::yyyymmddpp(QString dateStr, int period)
         }
     }
     if (ok)
-        result = ((yyyy*100 + mm)*100 + dd)*10 + period;
+        result = ((yyyy*20 + mm)*50 + dd)*100 + period;
     return result;
 }
 

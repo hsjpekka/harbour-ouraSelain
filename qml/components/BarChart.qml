@@ -24,31 +24,61 @@ SilicaListView {
     property string set2Name: ""
     property string set3Name: ""
     property string set4Name: ""
+    property bool   setValueLabel: false
     property int    showBarValue: 1 // 0 - no, 1 - when clicked, 2 - always
     property int    showVariance: 0 // 0 - no, 1 - max, 2 - min,  3 - max and min -- only with a single set
     property bool   showLabel: true
     property bool   valueLabelOutside: false
+    property int    valueLabelMinY: labelFontSize + Theme.paddingSmall
     //property real   selectedBarHeight: 0
     //property string selectedBarLabel: ""
     property int ed: -1
 
     signal barSelected(int barNr, real barValue, string barLabel)
     signal barPressAndHold(int barNr, real barValue, string barLabel)
+    signal dataCleared()
 
-    function addData(val, clr, lbl, val2, clr2, val3, clr3, val4, clr4) {
+    function addData(val, clr, lbl, val2, clr2, val3, clr3, val4, clr4, vlbl) {
         // {"barValue", "barColor", "barLabel", "group", "type"}
         // type: 0 - filled, 1 - top only
-        var varMax, varMin, varClr;
-        return listData.add(val, clr, val2, clr2, val3, clr3, val4, clr4, varMax, varMin,
-                            varClr, lbl);
+        var varMax, varMin, varClr, i;
+        i = listData.count;
+        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
     }
 
-    function addDataVariance(val, clr, varMax, varMin, varClr, lbl) {
+    function addDataVariance(val, clr, varMax, varMin, varClr, lbl, vlbl) {
         // {"barValue", "barColor", "localMax", "localMin", "maxMinColor", "barLabel", "group"}
+        var val2, val3, val4, clr2, clr3, clr4, i;
+        //console.log("add " + val + ", " + varMax + ", " + varMin + ", " + varClr)
+        i = listData.count;
+        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
+    }
+
+    function clear(ind) {
+        if (ind === undefined) {
+            dataCleared();
+            return listData.clear();
+        }
+
+        if (ind >= 0 && ind < listData.count) {
+            return listData.remove(ind);
+        }
+
+        return -1;
+    }
+
+    function insertData(i, val, clr, lbl, val2, clr2, val3, clr3, val4, clr4, vlbl) {
+        var varMax, varMin, varClr;
+        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
+    }
+
+    function insertDataVariance(i, val, clr, varMax, varMin, varClr, lbl, vlbl) {
         var val2, val3, val4, clr2, clr3, clr4;
-        console.log("add " + val + ", " + varMax + ", " + varMin + ", " + varClr)
-        return listData.add(val, clr, val2, clr2, val3, clr3, val4, clr4, varMax, varMin,
-                            varClr, lbl);
+        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
     }
 
     height: orientation === ListView.Horizontal ? 3*Theme.fontSizeMedium : 4*Theme.fontSizeMedium
@@ -83,6 +113,7 @@ SilicaListView {
         property real   gap: Theme.paddingSmall
         // bar height = barValue*scale
         property real   hscale: (barChartView.height - itemLabel.height - gap)/maxValue
+        property string vlabel: valLabel
         property real   vscale: (barChartView.width - labelWidth - gap)/maxValue
         property alias  valueLblVisible: valueLabel.visible
 
@@ -216,7 +247,7 @@ SilicaListView {
         Label {
             id: valueLabel
             //text: showBarValue === 2 ? barItem.bValue : ""
-            text: barItem.bValue
+            text: setValueLabel? barItem.vlabel : barItem.bValue
             visible: showBarValue === 2? true : (showBarValue === 1 ?
                                                      barItem.ListView.isCurrentItem : false)
             font.pixelSize: labelFontSize
@@ -236,16 +267,16 @@ SilicaListView {
 
             property int defX: chartBar.x + chartBar.width + Theme.paddingSmall
             property int defY: chartBar4.y - height - Theme.paddingSmall
-            property bool inFront: valueLabelOutside? false: (defY < 0)
+            property bool inFront: valueLabelOutside? false: (defY < -valueLabelMinY)
 
             //*
             Rectangle {
                 id: tausta
                 anchors.fill: parent
-                color: "black" //Theme.highlightDimmerColor
+                color: Theme.highlightDimmerColor
                 opacity: Theme.opacityHigh
                 //visible: parent.inFront ? (valueLabel.text > "") : false
-                visible: parent.inFront ? parent.visible : false
+                visible: true //parent.inFront ? parent.visible : false
                 z:-1
             }
             // */
@@ -285,36 +316,39 @@ SilicaListView {
     model: ListModel {
         // {"barValue", "barColor", "barLabel", "group"} // type: 0 - filled, 1 - top only
         id: listData
-        function add(val, clr, val2, clr2, val3, clr3, val4, clr4, vMax, vMin, mmClr, lbl) {
+
+        function insertData(i, v1, c1, v2, c2, v3, c3, v4, c4, vMax, vMin, mmClr, lbl, vlbl) {
             var clrStr, clr2Str, clr3Str, clr4Str, vClrStr;
             if (lbl === undefined)
                 lbl = "";
-            if (clr === undefined)
-                clr = "'" + Theme.highlightColor + "'";
-            if (clr2 === undefined)
-                clr2 = "'" + Theme.secondaryHighlightColor + "'";
-            if (clr3 === undefined)
-                clr3 = "'" + Theme.highlightDimmerColor + "'";
-            if (clr4 === undefined)
-                clr4 = "'" + Theme.highlightBackgroundColor + "'";
-            if (val === undefined)
-                val = 0;
-            if (val2 !== undefined)
+            if (c1 === undefined)
+                c1 = "'" + Theme.highlightColor + "'";
+            if (c2 === undefined)
+                c2 = "'" + Theme.secondaryHighlightColor + "'";
+            if (c3 === undefined)
+                c3 = "'" + Theme.highlightDimmerColor + "'";
+            if (c4 === undefined)
+                c4 = "'" + Theme.highlightBackgroundColor + "'";
+            if (v1 === undefined)
+                v1 = 0;
+            if (v2 !== undefined)
                 nrSets = 2
             else
-                val2 = 0;
-            if (val3 !== undefined)
+                v2 = 0;
+            if (v3 !== undefined)
                 nrSets = 3
             else
-                val3 = 0;
-            if (val4 !== undefined)
+                v3 = 0;
+            if (v4 !== undefined)
                 nrSets = 4
             else
-                val4 = 0;
-            clrStr = "" + clr;
-            clr2Str = "" + clr2;
-            clr3Str = "" + clr3;
-            clr4Str = "" + clr4;
+                v4 = 0;
+            if (vlbl === undefined)
+                vlbl = "";
+            clrStr = "" + c1;
+            clr2Str = "" + c2;
+            clr3Str = "" + c3;
+            clr4Str = "" + c4;
             if (showVariance < 0)
                 showVariance = 0;
             if (mmClr === undefined)
@@ -328,12 +362,12 @@ SilicaListView {
             else if (showVariance === 0 || showVariance === 1)
                 showVariance += 2;
             vClrStr = "" + mmClr;
-            append({"barValue": val*1.0, "barColor": clrStr, "barLabel": lbl,
-                                "bar2Value": val2*1.0, "bar2Color": clr2Str,
-                                "bar3Value": val3*1.0, "bar3Color": clr3Str,
-                                "bar4Value": val4*1.0, "bar4Color": clr4Str,
-                                "localMax": vMax*1.0, "localMin": vMin*1.0,
-                                "maxMinColor": vClrStr});
+            insert(i, {"barValue": v1*1.0, "barColor": clrStr, "barLabel": lbl,
+                       "bar2Value": v2*1.0, "bar2Color": clr2Str,
+                       "bar3Value": v3*1.0, "bar3Color": clr3Str,
+                       "bar4Value": v4*1.0, "bar4Color": clr4Str,
+                       "localMax": vMax*1.0, "localMin": vMin*1.0,
+                       "maxMinColor": vClrStr, "valLabel": vlbl});
         }
     }
 }

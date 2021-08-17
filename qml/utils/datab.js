@@ -1,5 +1,5 @@
 .pragma library
-var dbas, settingsTable = []; //, activityTable = [], readinessTable = [], sleepTable = [];
+var dbas, settingsTable = []; // settingsTable = [{"key": string, "value": string}];
 var appLog = [];
 // database keys
 var keyPersonalToken = "personalToken";
@@ -19,7 +19,7 @@ function addCloudRecord(ind, type, str) {
     str = modifyQuotes(str);
     query = "INSERT INTO " + dbTable + " (" + keyYMDP + ", " + keyType + ", " + keyRec + ") " +
             "VALUES (" + ind + ", '" + type + "', '" + str + "')";
-    log("adding: " + query.slice(0,70));
+    log("adding: " + query.slice(query.indexOf("VALUES"),query.indexOf("VALUES")+ 50));
 
     try {
         dbas.transaction(function(tx){
@@ -29,30 +29,33 @@ function addCloudRecord(ind, type, str) {
         log("Error adding to " + dbTable + "-table in database: " + err);
         return;
     }
-    log("insert result: " + result.rows.length + " <===> " + result);
+    //log("insert result: " + result.rows.length + " <===> " + result);
     return;
 }
 
-function addToSettings(key, value) {
-    var arr = [], i = -1;
-    arr.push(key);
-    arr.push(value);
+function addToSettings(key, value, toDb) {
 
     if(dbas === null) return;
 
-    try {
-        dbas.transaction(function(tx){
-            tx.executeSql("INSERT INTO settings (key, value)" +
-                          " VALUES ('" + key + "', '" + value + "')" )
-        })
-    } catch (err) {
-        log("Error adding to settings-table in database: " + err);
-        return;
+    if (toDb === undefined) {
+        toDb = true;
     }
 
-    readSettingsDb();
+    if (toDb) {
+        try {
+            dbas.transaction(function(tx){
+                tx.executeSql("INSERT INTO settings (key, value)" +
+                              " VALUES ('" + key + "', '" + value + "')" )
+            })
+        } catch (err) {
+            log("Error adding to settings-table in database: " + err);
+            return;
+        }
+    }
 
-    settingsTable.rows.push(arr);
+    //readSettingsDb();
+
+    settingsTable.push({"key": key, "value": value });
 
     return;
 
@@ -111,23 +114,33 @@ function createTblSettings() {
     return
 }
 
-function getSetting(key, defVal) {
-    var i=0, N=-1, result;
-    if (settingsTable.rows !== undefined) {
-        N = settingsTable.rows.length;
-    }
+function findSetting(key) {
+    var i=0, N, result = -1;
+
+    if (settingsTable.length === undefined)
+        return -2;
+
+    N = settingsTable.length;
 
     while (i<N) {
-        if (settingsTable.rows[i].key === key)
-            result = settingsTable.rows[i].value;
+        if (settingsTable[i].key === key) {
+            result = i;
+            i = N;
+        }
         i++;
     }
 
-    if (result === undefined) {
-        if (defVal === undefined)
-            result = ""
-        else
-            result = defVal;
+    return result;
+}
+
+function getSetting(key, defVal) {
+    var i=0, N=-1, result;
+
+    i = findSetting(key);
+    if (i >= 0) {
+        result = settingsTable[i].value;
+    } else {
+        result = defVal;
     }
 
     return result;
@@ -164,8 +177,12 @@ function modifyQuotes(str) {
     return str;
 }
 
-function readCloudDb(type, ymdp) {
+function readCloudDb(type, ymdp, verbal) {
     var i, iN, query, result, tbl;
+
+    if (verbal === undefined) {
+        verbal = true;
+    }
 
     if(dbas === null) return {"rows": {"length": -5}};
 
@@ -197,14 +214,16 @@ function readCloudDb(type, ymdp) {
         log(qsTr("sql.rows.length === undefined !!"));
         result = {"rows": {"length": -3}};
     } else {
-        log(qsTr("Read %1 oura-records.").arg(tbl.rows.length));
-        console.log(query);
-        iN = tbl.rows.length;
-        i = 0;
-        while (i < iN) {
-            oura.storeOldRecords(tbl.rows[i][keyType], tbl.rows[i][keyRec]);
-            i++;
+        if (verbal) {
+            log(qsTr("Read %1 oura-records.").arg(tbl.rows.length));
         }
+        //console.log(query);
+        //iN = tbl.rows.length;
+        //i = 0;
+        //while (i < iN) {
+            //oura.storeOldRecords(tbl.rows[i][keyType], tbl.rows[i][keyRec]);
+            //i++;
+        //}
         result = tbl;
     }
 
@@ -212,26 +231,38 @@ function readCloudDb(type, ymdp) {
 }
 
 function readSettingsDb() {
-    var query, N=0;
+    var query, i, N = 0, tbl;
 
     if(dbas === null) return -2;
 
     query = "SELECT * FROM settings";
     try {
         dbas.transaction(function(tx){
-            settingsTable = tx.executeSql(query);
+            tbl = tx.executeSql(query);
         });
-        if (settingsTable.rows === undefined) {
+        if (tbl === undefined) {
+            N = -1;
+            log("settingsTable undefined");
+        } else if (tbl.rows === undefined) {
             N = -4;
-        } else if (settingsTable.rows.length === undefined) {
+            log("settingsTable.rows undefined");
+        } else if (tbl.rows.length === undefined) {
             N = -5;
-        } else {
-            N = settingsTable.rows.length;
+            log("settingsTable.rows.length undefined");
         }
     } catch (err) {
         log("Error reading from settings-table in database: " + err + "\n    " + query);
         N = -3;
     };
+
+    if (N === 0) {
+        i = 0;
+        N = tbl.rows.length;
+        while (i < N) {
+            addToSettings(tbl.rows[i].key, tbl.rows[i].value, false);
+            i++;
+        }
+    }
 
     return N;
 }
@@ -287,6 +318,8 @@ function removeTableCloud() {
 }
 
 function storeRecord(type, jsonRecord) {
+    // jsonRecord = {"summary_date": "2016-10-11", ...}
+
     var year=0, month=0, date=0, period=0, ymd, ind;
     var result, record;
     if (type === keyActivity || type === keyReadiness || type === keySleep) {
@@ -317,10 +350,10 @@ function storeRecord(type, jsonRecord) {
         }
     }
 
-    ind = year*100*100*10 + month*100*10 + date*10 + period;
-    result = readCloudDb(type, ind);
+    ind = ymdp(year, month, date, period);
+    result = readCloudDb(type, ind, false);
     record = JSON.stringify(jsonRecord);
-    console.log("" + record.slice(0,29) + " ::: " + jsonRecord + " ... " + result);
+    //console.log("" + record.slice(0,29) + " ::: " + jsonRecord + " ... " + result);
     if (result.rows !== undefined) {
         if (result.rows.length > 0) {
             return updateCloudRecord(ind, type, record);
@@ -335,35 +368,41 @@ function storeRecord(type, jsonRecord) {
 //*
 function storeCloudRecords(type, cloudRecord) {
     //console.log("alkaa " + type + " :::: " + cloudRecord.splice(0, 20));
+    // cloudRecord = '{
+    // "sleep": [{"summary_date": "2016-10-11", ...}, {"summary_date": "2016-10-12", ...}, ...]
+    // }'
     var jsonCloud = JSON.parse(cloudRecord);
     var result = 0, i=0, iN; // 0 - onnistui, 1 - parseError
     var records;
     if (jsonCloud[keyActivity] !== undefined) {
-        console.log("_____activity_____");
+        console.log("_____store activity_____");
         type = keyActivity;
         records = jsonCloud[keyActivity];
     } else if (jsonCloud[keyReadiness] !== undefined) {
-        console.log("_____readiness_____");
+        console.log("_____store readiness_____");
         type = keyReadiness;
         records = jsonCloud[keyReadiness];
     } else if (jsonCloud[keySleep] !== undefined) {
-        console.log("_____sleep_____");
+        console.log("_____store sleep_____");
         type = keySleep;
         records = jsonCloud[keySleep];
     } else if (jsonCloud[keyBedTime] !== undefined) {
-        console.log("_____bedtime_____");
+        console.log("_____store bedtime_____");
         type = keyBedTime;
         records = jsonCloud[keyBedTime];
     } else if (type === keyUserInfo) {
-        console.log("_____info_____");
+        console.log("_____store info_____");
         records = jsonCloud;
+    } else {
+        log("____unknown record____\n" + cloudRecord.substring(0,60) + " ....")
     }
 
+    // records = [{"summary_date": "2016-10-11", ...}, {"summary_date": "2016-10-12", ...}, ...]
     if (Array.isArray(records)) {
         iN = records.length;
         for(i=0; i<iN; i++) {
             //if (i===0) {
-                console.log("i == " + i + " - " + JSON.stringify(records[i]).slice(0,28));
+                //console.log("i == " + i + " - " + JSON.stringify(records[i]).slice(0,28));
             //}
             storeRecord(type, records[i]);
         }
@@ -375,12 +414,12 @@ function storeCloudRecords(type, cloudRecord) {
 }
 // */
 
-function updateCloudRecord(type, ind, str) {
+function updateCloudRecord(ind, type, str) {
     var query, result;
     str = modifyQuotes(str);
-    query = "UPDATE " + dbTable + " SET " + keyRec + " = " + str +
-            " WHERE "+ keyYMDP + " = " + ind + " AND " + keyType + " = '" + type + "'";
-    log("updating: " + query);
+    query = "UPDATE " + dbTable + " SET " + keyRec + " = '" + str +
+            "' WHERE "+ keyYMDP + " = " + ind + " AND " + keyType + " = '" + type + "'";
+    log("updating: " + query.slice(17,36) + "___ " + query.slice(query.indexOf("WHERE")));
 
     try {
         dbas.transaction(function(tx){
@@ -390,19 +429,21 @@ function updateCloudRecord(type, ind, str) {
         log("Error adding to " + dbTable + "-table in database: " + err);
         return;
     }
-    log("insert result: " + result.rows + " <===> " + result);
+    //log("insert result: " + result.rows + " <===> " + result);
     return;
 }
 
 function updateSettings(key, value) {
-    var mj = "UPDATE settings SET value = '" + value +
-            "' WHERE key = '" + value + "'"
+    var i, mj = "UPDATE settings SET value = '" + value + "' WHERE key = '" + value + "'"
     // tunnus string, arvo string
     if(dbas === null) return;
 
-    if (settingsTable[key] === undefined) {
+    i = findSetting(key);
+    if ( i < 0) {
         log("update -> insert " + key + ", " + value)
         return addToSettings(key, value);
+    } else {
+        settingsTable[i].value = value;
     }
 
     try {
@@ -413,7 +454,11 @@ function updateSettings(key, value) {
         log("Error modifying settings-table in database: " + err);
     };
 
-    return
+    return;
+}
+
+function ymdp(year, month, date, period) {
+    return ((year*20 + month)*50 + date)*100 + period;
 }
 
 /*

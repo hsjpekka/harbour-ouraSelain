@@ -7,139 +7,38 @@ Page {
     id: page
 
     allowedOrientations: Orientation.All
-    onStatusChanged: {
-        var str
-        if (page.status === PageStatus.Inactive) {
-            str = "inactive"
-        } else if (page.status === PageStatus.Active) {
-            str = "FirstPage active\n\n "
-        } else if (page.status === PageStatus.Activating) {
-            str = "activating"
-        } else if (page.status === PageStatus.Deactivating) {
-            str = "deactivating"
-        }
-        DataB.log("page status - " + str)
-    }
 
-//    property var db: null
-//    property date latestStored: new Date(0)
-//  property int  contents: 0 // 0 - summaries, 1 - activity, 2 - sleep, 3 - readiness, 4 - bed times
-//    property string personalAccessToken: ""
+    signal refreshOuraCloud()
+    signal openSettings()
 
-    /*
-    function downloadOuraCloud(){
-        oura.refreshDownloads();
-        return;
-    }
-
-    function readDb() {
-        if(db === null) {
-            try {
-                db = LocalStorage.openDatabaseSync("oura", "0.1", "daily records", 10000);
-            } catch (err) {
-                DataB.log("Error in opening the database: " + err);
-                return -1;
-            };
-        }
-
-        DataB.dbas = db;
-        DataB.createTables();
-        DataB.readCloudDb(); // read all || since date1 || date1 - date2
-        DataB.readSettingsDb();
-
-        personalAccessToken = DataB.getSetting(DataB.keyPersonalToken, "");
-        if (personalAccessToken > "")
-            oura.setPersonalAccessToken(personalAccessToken);
-        //DataB.log(personalAccessToken);
-
-        return;
-    }
-
-    function setUpNow() {
-        var subPage = pageContainer.push(Qt.resolvedUrl("Settings.qml"), {
-                                             "token": personalAccessToken
-                                         })
-        subPage.setToken.connect(function () {
-            var msg, newTkn = subPage.token
-            if (newTkn === "") {
-                msg = qsTr("Clearing token!")
-            } else {
-                msg = qsTr("Changing token to %1.").arg(newTkn)
-            }
-
-            DataB.log("new token >>" + newTkn.slice(0, 8) + "... <<")
-
-            remorse.execute(msg, function() {
-                DataB.updateSettings(.keyPersonalToken, newTkn)
-                personalAccessToken = newTkn
-                oura.setPersonalAccessToken(newTkn)
-                downloadOuraCloud()
-            })
-        })
-
-        return
-    }
-    // */
+    property real factor: 1.1
+    property date _dateNow: new Date()
 
     Connections {
-        target: applicationWindow
-        onOuraActivityReady: {
+        target: oura
+        onFinishedActivity: {
             fillActivityData()
         }
-        onOuraBedTimesReady: {
+        onFinishedBedTimes: {
             fillBedTimeData()
         }
-        onOuraReadinessReady: {
+        onFinishedReadiness: {
             fillReadinessData()
         }
-        onOuraSleepReady: {
+        onFinishedSleep: {
             fillSleepData()
         }
     }
 
-    /*
     Connections {
-        target: oura
-        onFinishedActivity: {
-            activityChart.fillData()
-            chart1Summary.fillData()
+        target: applicationWindow
+        onStoredDataRead: {
+            activityChart.oldData();
+            sleepType.oldData();
+            sleepHBR.oldData();
+            readiness.oldData();
         }
     }
-
-    Connections {
-        target: oura
-        onFinishedSleep: {
-            sleepType.fillData()
-            chart2Summary.fillData()
-            sleepHBR.fillData()
-            chart3Summary.fillData()
-        }
-    }
-
-    Connections {
-        target: oura
-        onFinishedReadiness: {
-            readiness.fillData()
-            chart4Summary.fillData()
-        }
-    }
-    // */
-
-    RemorsePopup {
-        id: remorse
-    }
-
-    /*
-    Timer {
-        id: setUp
-        interval: 0.8*1000
-        running: false
-        repeat: false
-        onTriggered: {
-            setUpNow()
-        }
-    }
-    // */
 
     SilicaFlickable {
         anchors.fill: parent
@@ -150,8 +49,9 @@ Page {
             MenuItem {
                 text: qsTr("Activity")
                 onClicked: {
+                    DataB.log("activity update 0: " + new Date().toTimeString().substring(0,8))
                     pageContainer.push(Qt.resolvedUrl("activityPage.qml"), {
-                                           "summaryDate": oura.dateChange(0)
+                                           "summaryDate": oura.lastDate(DataB.keyActivity, 1) //
                                        })
                 }
             }
@@ -159,7 +59,7 @@ Page {
                 text: qsTr("Readiness")
                 onClicked: {
                     pageContainer.push(Qt.resolvedUrl("readinessPage.qml"), {
-                                           "summaryDate": oura.dateChange(0)
+                                           "summaryDate": oura.lastDate(DataB.keyReadiness, 1)
                                        })
                 }
             }
@@ -167,7 +67,7 @@ Page {
                 text: qsTr("Sleep")
                 onClicked: {
                     pageContainer.push(Qt.resolvedUrl("sleepPage.qml"), {
-                                           "summaryDate": oura.dateChange(0)
+                                           "summaryDate": oura.lastDate(DataB.keySleep, 1)
                                        })
                 }
             }
@@ -195,7 +95,7 @@ Page {
             MenuItem {
                 text: qsTr("refresh")
                 onClicked: {
-                    downloadOuraCloud()
+                    refreshOuraCloud()
                 }
             }
         }
@@ -214,7 +114,8 @@ Page {
             }
 
             Row {
-                width: parent.width
+                width: parent.width - 2*x
+                x: Theme.horizontalPageMargin
 
                 BarChart {
                     id: activityChart
@@ -222,36 +123,172 @@ Page {
                     height: Theme.itemSizeHuge
                     orientation: ListView.Horizontal
                     maxValue: 700
+                    valueLabelOutside: true
+
+                    property date firstDate: _dateNow
+                    property date lastDate: _dateNow
+                    property string table: DataB.keyActivity
+                    property string cell: "cal_active"
+
+                    function newData() {
+                        // ignore data before lastDate
+                        // average over the day readiness periods
+                        var val, day;
+                        var now = new Date(), dayMs = 24*60*60*1000;
+                        var first, last, diffMs, diffDays, i;
+
+                        if (oura.numberOfRecords(table) <= 0) {
+                            DataB.log("no " + table + "-data")
+                            return;
+                        }
+
+                        first = oura.firstDate(table);
+                        console.log("eka " + first.toDateString())
+                        if (first < firstDate) {
+                            firstDate = first;
+                        }
+                        if (chartData.count === 0) {
+                            lastDate = first;
+                        }
+                        last = lastDate;
+
+                        if (firstDate.getFullYear() > 2000) {
+                            diffMs = now.getTime() - lastDate.getTime();
+                            diffDays = Math.ceil(diffMs/dayMs);
+                        } else {
+                            DataB.log("first date in " + table + "-data from year " +
+                                      firstDate.getFullYear())
+                        }
+
+                        DataB.log("activity chart " + firstDate.getDate() + "." + (firstDate.getMonth() + 1) + ". - " + oura.lastDate(table).getDate() + "." + (oura.lastDate(table).getMonth() + 1) + ". = " + diffDays)
+                        for (i=0; i<diffDays; i++) {
+                            val = oura.value(table, cell, last);
+                            if (val === "-")
+                                val = 0;
+                            if (i === 0 && count > 0) {
+                                chartData.set(i, {"barValue": val})
+                            } else {
+                                day = dayStr(last.getDay());
+                                addData(val, Theme.highlightColor, day);
+                            }
+                            last.setTime(last.getTime() + dayMs);
+                        }
+
+                        if (i>0) {
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        lastDate = last;
+                        DataB.log("activity chart done " + i + " " + firstDate + " - " + lastDate);
+
+                        positionViewAtEnd();
+
+                        return;
+                    }
+
+                    function oldData() {
+                        var val, diffMs, diffDays;
+                        var first, last, dayMs = 24*60*60*1000, i=0;
+
+                        first = oura.firstDate(table);
+                        if (firstDate <= first) {
+                            return;
+                        }
+
+                        if (count === 0) {
+                            last = new Date();
+                            firstDate = last;
+                            lastDate = last;
+                        } else {
+                            last = firstDate;
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        diffMs = last.getTime() - first.getTime();
+                        diffDays = Math.ceil(diffMs/dayMs);
+
+                        while (i< diffDays) {
+                            val = oura.value(table, cell, last);
+                            if (val === "-")
+                                val = 0;
+                            insertData(0, val, Theme.highlightColor, dayStr(last.getDay()));
+
+                            i++;
+                            if (i === 300) {
+                                console.log("300 luuppia " + firstDate.toDateString())
+                            }
+                            last.setTime(last.getTime() - dayMs);
+                        }
+                        last.setTime(last.getTime() + dayMs);
+                        firstDate = last;
+
+                        positionViewAtEnd();
+
+                        return;
+                    }
 
                     function fillData() {
                         var table = DataB.keyActivity, cell = "cal_active";
                         var now = new Date(), dayMs = 24*60*60*1000;
-                        var first = now, nowEarly, diffMs, diffDays, i, val, day;
-                        if (latestStored === undefined || latestStored.getFullYear() < 2012) {
-                            first = oura.firstDate();
-                        } else {
-                            first.setFullYear(latestStored.getFullYear());
-                            first.setMonth(latestStored.getMonth());
-                            first.setDate(latestStored.getDate());
-                            first.setHours(latestStored.getHours());
-                            first.setMinutes(latestStored.getMinutes());
-                        }
-                        nowEarly = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 0, 0, 0);
-                        diffMs = nowEarly.getTime() - first.getTime();
-                        diffDays = Math.ceil(diffMs/dayMs);
+                        var first = now, diffMs, diffDays, i, val;
 
-                        DataB.log(" -- " + new Date().getTime() + " " + latestStored.getTime() + " " + first.getTime())
-                        //DataB.log("calories " + first.getDate() + "." + (first.getMonth() + 1) + ". - " + now.getDate() + "." + (now.getMonth() + 1) + ".")
+                        if (oura.numberOfRecords(table) <= 0) {
+                            DataB.log("no " + table + "-data")
+                            return;
+                        }
+
+                        activityChart.clear();
+
+                        first = oura.firstDate(table);
+                        if (first.getFullYear() > 2000) {
+                            diffMs = now.getTime() - first.getTime();
+                            diffDays = Math.ceil(diffMs/dayMs);
+                        } else {
+                            DataB.log("first date in " + table + "-data from year " +
+                                      first.getFullYear())
+                        }
+                        firstDate = first;
+                        lastDate = oura.lastDate(table);
+
                         for (i=0; i<diffDays; i++) {
-                            val = 1.0*oura.value(table, cell, first);
+                            val = oura.value(table, cell, first);
                             //DataB.log("adding " + val);
-                            day = dayStr(first.getDay());
-                            addData(val, Theme.highlightColor, day);
+                            //day = ;
+                            addData(val, Theme.highlightColor, dayStr(first.getDay()));
                             first.setTime(first.getTime() + dayMs);
                         }
-                        //DataB.log("calories done");
 
                         return;
+                    }
+
+                    function updateBars() {
+                        var table = DataB.keyActivity, cell = "cal_active";
+                        var val;
+                        var now = new Date(), dayMs = 24*60*60*1000, i=0;
+
+                        if (firstDate <= oura.firstDate(table)) {
+                            return;
+                        }
+
+                        now.setFullYear(firstDate.getFullYear());
+                        now.setMonth(firstDate.getMonth());
+                        now.setDate(firstDate.getDate());
+                        now.setHour(5);
+                        while (firstDate > oura.firstDate(table) && i < 300) {
+                            now.setTime(now.getTime()- dayMs);
+                            val = oura.value(table, cell, now, 0);
+                            if (val === "-")
+                                val = 0;
+                            insertData(0, val, Theme.highlightColor, dayStr(now.getDay()));
+
+                            firstDate.setFullYear(now.getFullYear());
+                            firstDate.setMonth(now.getMonth());
+                            firstDate.setDate(now.getDate());
+                            i++;
+                            if (i === 300) {
+                                console.log("300 luuppia " + firstDate.toDateString())
+                            }
+                        }
                     }
                 }
 
@@ -279,15 +316,16 @@ Page {
                         source: parent.score === parent.average? "image://theme/icon-s-asterisk" :
                                                    "image://theme/icon-s-arrow"
                         rotation: parent.score > parent.average? 180 : 0
-                        color: (parent.score > parent.average*1.1 ||
-                                parent.score < parent.average*0.9) ?
-                                   Theme.highlightColor : Theme.secondaryHighlightColor
+                        color: (parent.score > parent.average*factor*factor ||
+                                parent.score < parent.average/factor/factor) ?
+                                   Theme.primaryColor : Theme.highlightColor
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: parent.isValid
                     }
 
                     function fillData() {
                         var val;
+                        oura.setDateConsidered();
                         average = oura.average(DataB.keyActivity, "score"); // defaults to previous 7 days
                         val = oura.value(DataB.keyActivity, "score"); // defaults to yesterday
                         if (val === "-")
@@ -298,50 +336,13 @@ Page {
                 }
             }
 
-            /*
-            BarChart {
-                id: activeScore
-                width: parent.width
-                height: Theme.itemSizeExtraLarge
-                orientation: ListView.Horizontal
-                maxValue: 100
-
-                function fillData() {
-                    var table = "activity", cell = "score";
-                    var now = new Date(), dayMs = 24*60*60*1000;
-                    var first = now, nowEarly, diffMs, diffDays, i, val, day;
-                    if (latestStored === undefined || latestStored.getFullYear() < 2012) {
-                        first = oura.firstDate();
-                    } else {
-                        first.setFullYear(latestStored.getFullYear());
-                        first.setMonth(latestStored.getMonth());
-                        first.setDate(latestStored.getDate());
-                        first.setHours(latestStored.getHours());
-                        first.setMinutes(latestStored.getMinutes());
-                    }
-                    nowEarly = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 4, 0, 0, 0);
-                    diffMs = nowEarly.getTime() - first.getTime();
-                    diffDays = Math.ceil(diffMs/dayMs);
-
-                    DataB.log("score " + first.getDate() + "." + first.getMonth() + ". - " + now.getDate() + "." + now.getMonth() + ".")
-                    for (i=0; i<diffDays; i++) {
-                        val = oura.value(table, cell, first);
-                        day = dayStr(first.getDay());
-                        addData(val, Theme.highlightColor, day);
-                        first.setTime(first.getTime() + dayMs);
-                    }
-
-                    return;
-                }
-            }
-            // */
-
             SectionHeader {
                 text: qsTr("sleep")
             }
 
             Row {
-                width: parent.width
+                width: parent.width - 2*x
+                x: Theme.horizontalPageMargin
 
                 BarChart {
                     id: sleepType
@@ -350,39 +351,220 @@ Page {
                     orientation: ListView.Horizontal
                     maxValue: 10*60*60
                     arrayType: 0
+                    valueLabelOutside: true
+                    setValueLabel: true
 
-                    function fillData() {
-                        var table = "sleep", cell = "deep", cell2 = "light", cell3 = "rem", cell4 = "awake";
-                        var now = new Date(), dayMs = 24*60*60*1000, maxSleepHr = 10*60*60*1000;
-                        var first = now, nowEarly, diffMs, diffDays, i, day;
-                        var val, val2, val3, val4;
-                        if (latestStored === undefined || latestStored.getFullYear() < 2012) {
-                            first = oura.firstDate();
-                        } else {
-                            first.setFullYear(latestStored.getFullYear());
-                            first.setMonth(latestStored.getMonth());
-                            first.setDate(latestStored.getDate());
-                            first.setHours(latestStored.getHours());
-                            first.setMinutes(latestStored.getMinutes());
+                    property date firstDate: _dateNow
+                    property date lastDate: _dateNow
+                    property string table: DataB.keySleep
+                    property string cell1: "deep"
+                    property string cell2: "light"
+                    property string cell3: "rem"
+                    property string cell4: "awake"
+
+                    function newData() {
+                        // ignore data before lastDate
+                        // average over the day readiness periods
+                        var val1, val2, val3, val4, day;
+                        var now = new Date(), dayMs = 24*60*60*1000;
+                        var first, last, diffMs, diffDays, i;
+
+                        if (oura.numberOfRecords(table) <= 0) {
+                            DataB.log("no " + table + "-data")
+                            return;
                         }
-                        nowEarly = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 4, 0, 0, 0);
-                        diffMs = nowEarly.getTime() - first.getTime();
+
+                        first = oura.firstDate(table);
+                        console.log("eka " + first.toDateString())
+                        if (first < firstDate) {
+                            firstDate = first;
+                        }
+                        if (chartData.count === 0) {
+                            lastDate = first;
+                        }
+                        last = lastDate;
+
+                        if (firstDate.getFullYear() > 2000) {
+                            diffMs = now.getTime() - lastDate.getTime();
+                            diffDays = Math.ceil(diffMs/dayMs);
+                        } else {
+                            DataB.log("first date in " + table + "-data from year " +
+                                      firstDate.getFullYear())
+                        }
+
+                        DataB.log("sleep chart " + firstDate.getDate() + "." + (firstDate.getMonth() + 1) + ". - " + oura.lastDate(table).getDate() + "." + (oura.lastDate(table).getMonth() + 1) + ". = " + diffDays)
+                        for (i=0; i<diffDays; i++) {
+                            val1 = oura.value(table, cell1, last, -2); // -1 is_longest==1, -2 sum of all suitable entries
+                            val2 = oura.value(table, cell2, last, -2); // -1 is_longest==1
+                            val3 = oura.value(table, cell3, last, -2); // -1 is_longest==1
+                            val4 = oura.value(table, cell4, last, -2); // -1 is_longest==1
+                            if (val1 === "-")
+                                val1 = 0;
+                            if (val2 === "-")
+                                val2 = 0;
+                            if (val3 === "-")
+                                val3 = 0;
+                            if (val4 === "-")
+                                val4 = 0;
+
+                            day = dayStr(last.getDay());
+                            if (i === 0 && count > 0) {
+                                chartData.set(i, {"barValue": val1, "bar2Value": val2,
+                                              "bar3Value": val3, "bar4Value": val4, "valLabel":
+                                                  secToHM(val1*1.0 + val2*1.0 + val3*1.0) })
+                            } else {
+                                addData(val1, "DarkGreen", day, val2, "Green", val3,
+                                        "LightGreen", val4, "LightYellow",
+                                        secToHM(val1*1.0 + val2*1.0 + val3*1.0));
+                            }
+                            last.setTime(last.getTime() + dayMs);
+                        }
+
+                        if (i>0) {
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        lastDate = last;
+                        DataB.log("sleep chart done " + i + " " + firstDate + " - " + lastDate);
+
+                        positionViewAtEnd();
+
+                        return;
+                    }
+
+                    function oldData() {
+                        var val1, val2, val3, val4, diffMs, diffDays;
+                        var first, last, dayMs = 24*60*60*1000, day, i=0;
+
+                        first = oura.firstDate(table);
+                        if (firstDate <= first) {
+                            return;
+                        }
+
+                        if (count === 0) {
+                            last = new Date();
+                            firstDate = last;
+                            lastDate = last;
+                        } else {
+                            last = firstDate;
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        diffMs = last.getTime() - first.getTime();
                         diffDays = Math.ceil(diffMs/dayMs);
 
-                        DataB.log("sleep: eka " + first.getDate() + "." + (first.getMonth()+1) + ". - " + now.getDate() + "." + (now.getMonth() + 1) + ".")
-                        for (i=0; i<diffDays; i++) {
-                            val = oura.value(table, cell, first, -2); // -1 is_longest==1, -2 sum of all suitable entries
+                        while (i< diffDays) {
+                            val1 = oura.value(table, cell1, first, -2); // -1 is_longest==1, -2 sum of all suitable entries
                             val2 = oura.value(table, cell2, first, -2); // -1 is_longest==1
                             val3 = oura.value(table, cell3, first, -2); // -1 is_longest==1
                             val4 = oura.value(table, cell4, first, -2); // -1 is_longest==1
+                            if (val1 === "-")
+                                val1 = 0;
+                            if (val2 === "-")
+                                val2 = 0;
+                            if (val3 === "-")
+                                val3 = 0;
+                            if (val4 === "-")
+                                val4 = 0;
+
                             day = dayStr(first.getDay());
-                            addData(val, "DarkGreen", day, val2, "Green", val3, "LightGreen", val4, "LightYellow");
+                            insertData(0, val1, "DarkGreen", day, val2, "Green", val3,
+                                       "LightGreen", val4, "LightYellow",
+                                       secToHM(val1+val2+val3));
+
+                            i++;
+                            if (i === 300) {
+                                console.log("300 luuppia " + firstDate.toDateString())
+                            }
+                            last.setTime(last.getTime()- dayMs);
+                        }
+                        last.setTime(last.getTime() + dayMs);
+                        firstDate = last;
+
+                        positionViewAtEnd();
+
+                        return;
+                    }
+
+                    function fillData() {
+                        var table = DataB.keySleep, cell = "deep", cell2 = "light", cell3 = "rem", cell4 = "awake";
+                        var now = new Date(), dayMs = 24*60*60*1000, maxSleepHr = 10*60*60*1000;
+                        var first, diffDays, i, day, diffMs;
+                        var val, val2, val3, val4;
+
+                        if (oura.numberOfRecords(table) <= 0) {
+                            DataB.log("no " + table + "-data")
+                            return;
+                        }
+
+                        sleepType.clear();
+
+                        first = oura.firstDate(table);
+                        if (first.getFullYear() > 2000) {
+                            diffMs = now.getTime() - first.getTime();
+                            diffDays = Math.ceil(diffMs/dayMs);
+                        } else {
+                            DataB.log("first date in " + table + "-data from year " +
+                                      first.getFullYear())
+                        }
+                        firstDate = first;
+                        lastDate = oura.lastDate(table);
+
+                        for (i=0; i<diffDays; i++) {
+                            val = oura.value(table, cell, first, -2)*1.0; // -1 is_longest==1, -2 sum of all suitable entries
+                            val2 = oura.value(table, cell2, first, -2)*1.0; // -1 is_longest==1
+                            val3 = oura.value(table, cell3, first, -2)*1.0; // -1 is_longest==1
+                            val4 = oura.value(table, cell4, first, -2)*1.0; // -1 is_longest==1
+                            day = dayStr(first.getDay());
+                            addData(val, "DarkGreen", day, val2, "Green", val3, "LightGreen", val4, "LightYellow", secToHM(val+val2+val3));
                             first.setTime(first.getTime() + dayMs);
                         }
                         //DataB.log("sleep score done")
 
                         return;
                     }
+
+                    function updateBars() {
+                        var table = DataB.keySleep, cell = "deep", cell2 = "light", cell3 = "rem", cell4 = "awake";
+                        var val, val2, val3, val4, lowest, day;
+                        var now = new Date(), dayMs = 24*60*60*1000, i=0;
+
+                        if (firstDate <= oura.firstDate(table)) {
+                            return;
+                        }
+
+                        now.setFullYear(firstDate.getFullYear());
+                        now.setMonth(firstDate.getMonth());
+                        now.setDate(firstDate.getDate());
+                        now.setHour(5);
+                        while (firstDate > oura.firstDate(table) && i < 300) {
+                            now.setTime(now.getTime()- dayMs);
+                            val = oura.value(table, cell, now, -2)*1.0; // -1 is_longest==1, -2 sum of all suitable entries
+                            val2 = oura.value(table, cell2, now, -2)*1.0; // -1 is_longest==1
+                            val3 = oura.value(table, cell3, now, -2)*1.0; // -1 is_longest==1
+                            val4 = oura.value(table, cell4, now, -2)*1.0; // -1 is_longest==1
+                            if (val === "-")
+                                val = 0;
+                            if (val2 === "-")
+                                val2 = 0;
+                            if (val3 === "-")
+                                val3 = 0;
+                            if (val4 === "-")
+                                val4 = 0;
+
+                            day = dayStr(first.getDay());
+                            insertData(0, val, "DarkGreen", day, val2, "Green", val3, "LightGreen", val4, "LightYellow", secToHM(val+val2+val3));
+
+                            firstDate.setFullYear(now.getFullYear());
+                            firstDate.setMonth(now.getMonth());
+                            firstDate.setDate(now.getDate());
+                            i++;
+                            if (i === 300) {
+                                console.log("300 luuppia " + firstDate.toDateString())
+                            }
+                        }
+                    }
+
                 }
 
                 Column {
@@ -409,9 +591,9 @@ Page {
                         source: parent.score === parent.average? "image://theme/icon-s-asterisk" :
                                                    "image://theme/icon-s-arrow"
                         rotation: parent.score > parent.average? 180 : 0
-                        color: (parent.score > parent.average*1.1 ||
-                                parent.score < parent.average*0.9) ?
-                                   Theme.highlightColor : Theme.secondaryHighlightColor
+                        color: (parent.score > parent.average*factor ||
+                                parent.score < parent.average/factor) ?
+                                   Theme.primaryColor : Theme.highlightColor
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: parent.isValid
                     }
@@ -433,7 +615,8 @@ Page {
             }
 
             Row {
-                width: parent.width
+                width: parent.width - 2*x
+                x: Theme.horizontalPageMargin
 
                 BarChart {
                     id: sleepHBR
@@ -441,24 +624,143 @@ Page {
                     height: Theme.itemSizeLarge
                     orientation: ListView.Horizontal
                     maxValue: 60
+                    valueLabelOutside: true
 
-                    function fillData() {
-                        var table = "sleep", cell = "hr_average", cellLow = "hr_lowest";
+                    property date firstDate: _dateNow
+                    property date lastDate: _dateNow
+                    property string table: DataB.keySleep
+                    property string cell: "hr_average"
+                    property string cellLow: "hr_lowest"
+
+                    function newData() {
+                        // ignore data before lastDate
                         var val, lowest, day;
                         var now = new Date(), dayMs = 24*60*60*1000;
-                        var first = now, nowEarly, diffMs, diffDays, i;
-                        if (latestStored === undefined || latestStored.getFullYear() < 2012) {
-                            first = oura.firstDate();
-                        } else {
-                            first.setFullYear(latestStored.getFullYear());
-                            first.setMonth(latestStored.getMonth());
-                            first.setDate(latestStored.getDate());
-                            first.setHours(latestStored.getHours());
-                            first.setMinutes(latestStored.getMinutes());
+                        var first, last, diffMs, diffDays, i;
+
+                        if (oura.numberOfRecords(table) <= 0) {
+                            DataB.log("no " + table + "-data")
+                            return;
                         }
-                        nowEarly = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 4, 0, 0, 0);
-                        diffMs = nowEarly.getTime() - first.getTime();
+
+                        first = oura.firstDate(table);
+                        console.log("hbr eka " + first.toDateString())
+                        if (first < firstDate) {
+                            firstDate = first;
+                        }
+                        if (chartData.count === 0) {
+                            lastDate = first;
+                        }
+                        last = lastDate;
+
+                        if (firstDate.getFullYear() > 2000) {
+                            diffMs = now.getTime() - lastDate.getTime();
+                            diffDays = Math.ceil(diffMs/dayMs);
+                        } else {
+                            DataB.log("first date in " + table + "-data from year " +
+                                      firstDate.getFullYear())
+                        }
+
+                        DataB.log("hbr chart " + firstDate.getDate() + "." + (firstDate.getMonth() + 1) + ". - " + oura.lastDate(table).getDate() + "." + (oura.lastDate(table).getMonth() + 1) + ". = " + diffDays)
+                        for (i=0; i<diffDays; i++) {
+                            val = oura.value(table, cell, last);
+                            if (val === "-")
+                                val = 0;
+                            lowest = oura.value(table, cellLow, last);
+                            if (lowest === "-")
+                                lowest = 0;
+
+                            if (i === 0 && count > 0) {
+                                chartData.set(i, {"barValue": val, "localMax": lowest,
+                                                  "localMin": lowest })
+                            } else {
+                                day = dayStr(first.getDay());
+                                addDataVariance(val, "red", lowest, lowest, (lowest === 0? "transparent" : Theme.secondaryColor), day);
+                            }
+
+                            last.setTime(last.getTime() + dayMs);
+                        }
+
+                        if (i>0) {
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        lastDate = last;
+                        DataB.log("hbr chart done " + i + " " + firstDate + " - " + lastDate);
+
+                        positionViewAtEnd();
+
+                        return;
+                    }
+
+                    function oldData() {
+                        var val, lowest, diffMs, diffDays;
+                        var first, last, dayMs = 24*60*60*1000, i=0;
+
+                        first = oura.firstDate(table);
+                        if (firstDate <= first) {
+                            return;
+                        }
+
+                        if (count === 0) {
+                            last = new Date();
+                            firstDate = last;
+                            lastDate = last;
+                        } else {
+                            last = firstDate;
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        diffMs = last.getTime() - first.getTime();
                         diffDays = Math.ceil(diffMs/dayMs);
+
+                        while (i < diffDays) {
+                            val = oura.value(table, cell, last);
+                            if (val === "-")
+                                val = 0;
+                            lowest = oura.value(table, cellLow, last);
+                            if (lowest === "-")
+                                lowest = 0;
+                            insertDataVariance(0, val, "red", lowest, lowest, (lowest === 0? "transparent" : Theme.secondaryColor), day);
+
+                            if (i === 300) {
+                                console.log("300 luuppia " + firstDate.toDateString())
+                            }
+                            last.setTime(last.getTime()- dayMs);
+                            i++;
+                        }
+
+                        last.setTime(last.getTime() + dayMs);
+                        firstDate = last;
+
+                        positionViewAtEnd();
+
+                        return;
+                    }
+
+                    function fillData() {
+                        var table = DataB.keySleep, cell = "hr_average", cellLow = "hr_lowest";
+                        var val, lowest, day;
+                        var now = new Date(), dayMs = 24*60*60*1000;
+                        var first = now, diffMs, diffDays, i;
+
+                        if (oura.numberOfRecords(table) <= 0) {
+                            DataB.log("no " + table + "-data")
+                            return;
+                        }
+
+                        sleepHBR.clear();
+
+                        first = oura.firstDate(table);
+                        if (first.getFullYear() > 2000) {
+                            diffMs = now.getTime() - first.getTime();
+                            diffDays = Math.ceil(diffMs/dayMs);
+                        } else {
+                            DataB.log("first date in " + table + "-data from year " +
+                                      first.getFullYear())
+                        }
+                        firstDate = first;
+                        lastDate = oura.lastDate(table);
 
                         //DataB.log("hbr " + first.getDate() + "." + first.getMonth() + ". - " + now.getDate() + "." + now.getMonth() + ".")
                         for (i=0; i<diffDays; i++) {
@@ -475,6 +777,40 @@ Page {
                         //DataB.log("hbr done");
 
                         return;
+                    }
+
+                    function updateBars() {
+                        var table = DataB.keySleep, cell = "hr_average", cellLow = "hr_lowest";
+                        var val, lowest, day;
+                        var now = new Date(), dayMs = 24*60*60*1000, i=0;
+
+                        if (firstDate <= oura.firstDate(table)) {
+                            return;
+                        }
+
+                        now.setFullYear(firstDate.getFullYear());
+                        now.setMonth(firstDate.getMonth());
+                        now.setDate(firstDate.getDate());
+                        now.setHour(5);
+                        while (firstDate > oura.firstDate(table) && i < 300) {
+                            now.setTime(now.getTime()- dayMs);
+                            val = oura.value(table, cell, now, 0);
+                            if (val === "-")
+                                val = 0;
+                            lowest = oura.value(table, cellLow, now, 0);
+                            if (lowest === "-")
+                                lowest = 0;
+                            day = dayStr(now.getDay());
+                            insertDataVariance(0, val, "red", lowest, lowest, (lowest === 0? "transparent" : Theme.secondaryColor), day);
+
+                            firstDate.setFullYear(now.getFullYear());
+                            firstDate.setMonth(now.getMonth());
+                            firstDate.setDate(now.getDate());
+                            i++;
+                            if (i === 300) {
+                                console.log("300 luuppia " + firstDate.toDateString())
+                            }
+                        }
                     }
                 }
 
@@ -502,9 +838,9 @@ Page {
                         source: parent.score === parent.average? "image://theme/icon-s-asterisk" :
                                                    "image://theme/icon-s-arrow"
                         rotation: parent.score > parent.average? 180 : 0
-                        color: (parent.score > parent.average*1.1 ||
-                                parent.score < parent.average*0.9) ?
-                                   Theme.highlightColor : Theme.secondaryHighlightColor
+                        color: (parent.score > parent.average*factor ||
+                                parent.score < parent.average/factor) ?
+                                   Theme.primaryColor : Theme.highlightColor
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: parent.isValid
                     }
@@ -526,7 +862,8 @@ Page {
             }
 
             Row {
-                width: parent.width
+                width: parent.width - 2*x
+                x: Theme.horizontalPageMargin
 
                 BarChart {
                     id: readiness
@@ -534,34 +871,108 @@ Page {
                     height: Theme.itemSizeLarge
                     orientation: ListView.Horizontal
                     maxValue: 100
+                    valueLabelOutside: true
 
-                    function fillData() {
-                        var table = "readiness", cell = "score";
+                    property date firstDate: _dateNow
+                    property date lastDate: _dateNow
+                    property string table: DataB.keyReadiness
+                    property string cell: "score"
+
+                    function newData() {
+                        // ignore data before lastDate
+                        // average over the day readiness periods
                         var val, day;
                         var now = new Date(), dayMs = 24*60*60*1000;
-                        var first = now, nowEarly, diffMs, diffDays, i;
-                        if (latestStored === undefined || latestStored.getFullYear() < 2012) {
-                            first = oura.firstDate();
-                        } else {
-                            first.setFullYear(latestStored.getFullYear());
-                            first.setMonth(latestStored.getMonth());
-                            first.setDate(latestStored.getDate());
-                            first.setHours(latestStored.getHours());
-                            first.setMinutes(latestStored.getMinutes());
+                        var first, last, diffMs, diffDays, i;
+
+                        if (oura.numberOfRecords(table) <= 0) {
+                            DataB.log("no " + table + "-data")
+                            return;
                         }
-                        nowEarly = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 4, 0, 0, 0);
-                        diffMs = nowEarly.getTime() - first.getTime();
+
+                        //readiness.clear();
+
+                        first = oura.firstDate(table);
+                        console.log("eka " + first.toDateString())
+                        if (first < firstDate) {
+                            firstDate = first;
+                        }
+                        if (chartData.count === 0) {
+                            lastDate = first;
+                        }
+                        last = lastDate;
+
+                        if (firstDate.getFullYear() > 2000) {
+                            diffMs = now.getTime() - lastDate.getTime();
+                            diffDays = Math.ceil(diffMs/dayMs);
+                        } else {
+                            DataB.log("first date in " + table + "-data from year " +
+                                      firstDate.getFullYear())
+                        }
+
+                        DataB.log("readiness chart " + firstDate.getDate() + "." + (firstDate.getMonth() + 1) + ". - " + oura.lastDate(table).getDate() + "." + (oura.lastDate(table).getMonth() + 1) + ". = " + diffDays)
+                        for (i=0; i<diffDays; i++) {
+                            val = oura.average(table, cell, last.getFullYear(),
+                                               last.getMonth() + 1, last.getDate(), 1);
+                            day = dayStr(last.getDay());
+                            if (i === 0 && count > 0) {
+                                chartData.set(i, {"barValue": val})
+                            } else {
+                                addData(val, Theme.highlightColor, day);
+                            }
+                            last.setTime(last.getTime() + dayMs);
+                        }
+
+                        if (i>0) {
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        lastDate = last;
+                        DataB.log("readiness chart done " + i + " " + firstDate + " - " + lastDate);
+
+                        positionViewAtEnd();
+
+                        return;
+                    }
+
+                    function oldData() {
+                        var table = DataB.keyReadiness, cell = "score";
+                        var val, diffMs, diffDays;
+                        var first, last, dayMs = 24*60*60*1000, i=0;
+
+                        first = oura.firstDate(table);
+                        if (firstDate <= first) {
+                            return;
+                        }
+
+                        if (count === 0) {
+                            last = new Date();
+                            firstDate = last;
+                            lastDate = last;
+                        } else {
+                            last = firstDate;
+                            last.setTime(last.getTime() - dayMs);
+                        }
+
+                        diffMs = last.getTime() - first.getTime();
                         diffDays = Math.ceil(diffMs/dayMs);
 
-                        //DataB.log("readiness " + first.getDate() + "." + (first.getMonth() + 1) + ". - " + now.getDate() + "." + (now.getMonth() + 1) + ".")
-                        for (i=0; i<diffDays; i++) {
-                            val = 1.0*oura.value(table, cell, first, 0);
-                            day = dayStr(first.getDay());
-                            //DataB.log("adding " + val);
-                            addData(val, Theme.highlightColor, day);
-                            first.setTime(first.getTime() + dayMs);
+                        while (i< diffDays) {
+                            val = oura.value(table, cell, last, 0);
+                            if (val === "-")
+                                val = 0;
+                            insertData(0, val, Theme.highlightColor, dayStr(last.getDay()));
+
+                            i++;
+                            if (i === 300) {
+                                console.log("300 luuppia " + firstDate.toDateString())
+                            }
+                            last.setTime(last.getTime()- dayMs);
                         }
-                        //DataB.log("readiness done " + i);
+                        last.setTime(last.getTime() + dayMs);
+                        firstDate = last;
+
+                        positionViewAtEnd();
 
                         return;
                     }
@@ -591,8 +1002,8 @@ Page {
                         source: parent.score === parent.average? "image://theme/icon-s-asterisk" :
                                                    "image://theme/icon-s-arrow"
                         rotation: parent.score > parent.average? 180 : 0
-                        color: (parent.score > parent.average*1.1 ||
-                                parent.score < parent.average*0.9) ?
+                        color: (parent.score > parent.average*factor ||
+                                parent.score < parent.average/factor) ?
                                    Theme.highlightColor : Theme.secondaryHighlightColor
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: parent.isValid
@@ -641,7 +1052,8 @@ Page {
 
     function fillActivityData() {
         console.log("....activity....")
-        activityChart.fillData();
+        oura.setDateConsidered();
+        activityChart.newData();
         chart1Summary.fillData();
     }
 
@@ -650,24 +1062,34 @@ Page {
 
     function fillReadinessData() {
         console.log("....readiness....")
-        readiness.fillData();
+        oura.setDateConsidered();
+        readiness.newData();
         chart4Summary.fillData();
     }
 
     function fillSleepData() {
         console.log("....sleep....")
-        sleepType.fillData();
+        oura.setDateConsidered();
+        sleepType.newData();
         chart2Summary.fillData();
-        sleepHBR.fillData();
+        sleepHBR.newData();
         chart3Summary.fillData();
     }
 
-    Component.onCompleted: {
-        //readDb()
-//        if (personalAccessToken > "")
-//            downloadOuraCloud()
-//        else {
-//            setUp.start()
-//        }
+    function secToHM(sec) {
+        var hours, mins, result;
+
+        mins = (sec-sec%60)/60;
+        hours = (mins - mins%60)/60;
+        mins = mins - hours*60;
+
+        result = hours + ":";
+        if (mins < 10) {
+            result += "0";
+        }
+        result += mins;
+
+        return result;
     }
+
 }

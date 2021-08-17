@@ -23,6 +23,7 @@ Page {
                 text: "json"
                 onClicked: {
                     jsonString.visible = !jsonString.visible
+                    jsonString.text = oura.printReadiness()
                 }
             }
             MenuItem {
@@ -188,6 +189,5 @@ Page {
 
     Component.onCompleted: {
         updateValues()
-        jsonString.text = oura.printReadiness()
     }
 }

@@ -18,14 +18,19 @@ public:
     Q_INVOKABLE double average(QString type, QString key, int year1=0, int month1=0, int day1=0, int days=7);
     Q_INVOKABLE bool dateAvailable(QString summaryType, QDate date);
     Q_INVOKABLE QDate dateChange(int step = -1);
+    Q_INVOKABLE void downloadOuraCloud();
     Q_INVOKABLE int endHour(QString summaryType);
     Q_INVOKABLE int endHour(QString summaryType, QDate date);
     Q_INVOKABLE int endMinute(QString summaryType);
     Q_INVOKABLE int endMinute(QString summaryType, QDate date);
+    Q_INVOKABLE QDate firstDate(QString summaryType, int first=0); // if first < 0 counts from the last
     Q_INVOKABLE QDate firstDate(int first=0); // if first < 0 counts from the last
     Q_INVOKABLE int fromDB(QString summaryType, QString jsonDb);
-    Q_INVOKABLE QDate lastDate();
-    Q_INVOKABLE QString myName(QString def = "");
+    Q_INVOKABLE bool isLoading(QString summaryType = "");
+    Q_INVOKABLE QDate lastDate(int i=0); // usually only activity-data on the latest date
+    Q_INVOKABLE QDate lastDate(QString summaryType, int i=0); // usually only activity-data on the latest date
+    Q_INVOKABLE QString myName(QString defVal);
+    Q_INVOKABLE int numberOfRecords(QString summaryType);
     Q_INVOKABLE int periodCount(QString content, QDate date);
     Q_INVOKABLE QString printActivity();
     Q_INVOKABLE QString printBedTimes();
@@ -33,11 +38,11 @@ public:
     Q_INVOKABLE QString printReadiness();
     Q_INVOKABLE QString printSleep();
     Q_INVOKABLE int readinessCount(QDate date);
-    Q_INVOKABLE void downloadOuraCloud();
-    Q_INVOKABLE QDate setDateConsidered(QDate date);
+    Q_INVOKABLE QJsonObject recordNr(QString summaryType, int i);
+    Q_INVOKABLE QDate setDateConsidered(QDate date = QDate(0,0,0)); // if no date, lastDate()-1
     Q_INVOKABLE void setPersonalAccessToken(QString pat);
-    Q_INVOKABLE void setStartDate(int year=0, int month=0, int day=0);
-    Q_INVOKABLE void setEndDate(int year=0, int month=0, int day=0);
+    Q_INVOKABLE QDate setStartDate(int year=0, int month=0, int day=0);
+    Q_INVOKABLE QDate setEndDate(int year=0, int month=0, int day=0);
     Q_INVOKABLE int sleepCount(QDate date);
     //Q_INVOKABLE QString showResponseText();
     Q_INVOKABLE int startHour(QString summaryType);
@@ -85,10 +90,10 @@ private:
     //XhttpRequest xhttp;
     QNetworkAccessManager netManager;
     QNetworkReply *activityReply, *bedTimesReply, *readinessReply, *sleepReply, *userReply;
+    bool isLoadingActivity = false, isLoadingBedTimes = false, isLoadingInfo = false,
+        isLoadingReadiness = false, isLoadingSleep = false;
     //QNetworkRequest request;
     //QUrl url;
-    void download(ContentType content);
-    void downloadNext();
 
     int addRecord(ContentType content, QJsonObject newValue);
     int addRecord(ContentType content, QJsonValue newValue);
@@ -98,19 +103,21 @@ private:
     QJsonValue checkValue(QJsonObject *object, QString key, bool silent=false);
     QJsonObject convertToObject(QNetworkReply *reply);
     QDate dateAt(ContentType type, int i);
+    void download(ContentType content);
+    void downloadNext();
     QTime endTime(QString summaryType, QDate date);
     QDate firstDateIn(ContentType type, int first = 0);
     int iSummary(ContentType content, QDate searchDate, int i0=0);
     //int iSummary(QJsonArray *summary, QDate searchDate, int i0=0);
     double jsonToDouble(QJsonValue val);
-    QString qValueToQString(QJsonValue value);
-    QDate summaryDate(QJsonObject *obj);
-    QTime startTime(QString summaryType, QDate date);
     int periodCount(ContentType type, QDate date);
-    QJsonValue valueAtI(QJsonArray *list, int i, QString key);
     QJsonObject processCloudResponse(QNetworkReply *reply, QString *strStorage);
+    QString qValueToQString(QJsonValue value);
+    QTime startTime(QString summaryType, QDate date);
     int storeRecords(QString summaryType, QString jsonString); // number of stored records
+    QDate summaryDate(QJsonObject *obj);
     QJsonValue valueActivity(QString key, QDate date = QDate::currentDate());
+    QJsonValue valueAtI(QJsonArray *list, int i, QString key);
     QJsonValue valueBedTimes(QString key, QDate date = QDate::currentDate());
     QJsonValue valueFinder(ContentType content, QString key, QDate date = QDate::currentDate(), int i0=0);
     QJsonValue valueReadiness(QString key, QDate date = QDate::currentDate(), int i0=0);

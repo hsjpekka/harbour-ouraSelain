@@ -13,20 +13,36 @@ Page {
     signal setToken(string newToken)
 
     function getUserData() {
-        var str = oura.myName();
+        var str = oura.myName(qsTr("name unknown"));
         age.value = oura.value("userinfo","age");
         gender.value = oura.value("userinfo","gender");
         user.value = str;
-        if (str.indexOf("@") < 0) {
+        if (str.indexOf("@") > 0) {
+            user.label = qsTr("email");
+        } else {
             user.label = qsTr("name");
         }
+
         weight.value = oura.value("userinfo","weight");
         return;
     }
 
     Connections {
         target: oura
+        onFinishedActivity: {
+            downloadLabel.visible = oura.isLoading()
+        }
+        onFinishedSleep: {
+            downloadLabel.visible = oura.isLoading()
+        }
+        onFinishedReadiness: {
+            downloadLabel.visible = oura.isLoading()
+        }
+        onFinishedBedTimes: {
+            downloadLabel.visible = oura.isLoading()
+        }
         onFinishedInfo: {
+            downloadLabel.visible = oura.isLoading()
             getUserData()
         }
     }
@@ -51,6 +67,13 @@ Page {
                 onClicked: {
                     tokenField.text = token
                     changeToken = false
+                }
+            }
+
+            MenuItem {
+                text: qsTr("check database")
+                onClicked: {
+                    pageContainer.push(Qt.resolvedUrl("dataBase.qml"))
                 }
             }
         }
@@ -103,7 +126,7 @@ Page {
             }
 
             SectionHeader {
-                text: "Personal access token"
+                text: qsTr("Personal access token")
             }
 
             LinkedLabel {
@@ -131,6 +154,86 @@ Page {
                 }
             }
 
+            SectionHeader {
+                text: qsTr("Download old data")
+            }
+
+            Label {
+                color: Theme.highlightColor
+                width: parent.width - 2*x
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                x: Theme.horizontalPageMargin
+                text: qsTr("The first downloaded record from OuraCloud is from %1. " +
+                           "To retrieve older records choose the date below."
+                           ).arg(Qt.formatDate(oura.firstDate(),Qt.DefaultLocaleShortDate))
+            }
+
+            ValueButton {
+                id: dateButton
+                label: qsTr("Fetch dates starting from")
+                value: firstDate.toDateString(Qt.locale(), Locale.ShortFormat)
+                onClicked: {
+                    var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
+                                                    "date": firstDate } )
+                    dialog.accepted.connect( function() {
+                        value = dialog.dateText
+                        firstDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
+                        year = dialog.year
+                        month = dialog.month
+                        day = dialog.day
+                    } )
+                }
+
+                property date firstDate: oura.firstDate()
+                property int  year: firstDate.getFullYear()
+                property int  month: firstDate.getMonth()
+                property int  day: firstDate.getDate()
+            }
+
+            Button {
+                id: downloadButton
+                text: qsTr("Fetch old records")
+                anchors.horizontalCenter: parent.horizontalCenter
+                onClicked: {
+                    oura.setStartDate(dateButton.year, dateButton.month, dateButton.day)
+                    oura.downloadOuraCloud()
+                    downloadLabel.visible = true
+                }
+            }
+
+            Item {
+                height: Theme.itemSizeMedium
+                width: 1
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Item {
+                id: downloadLabel
+                width: parent.width - 2*x
+                height: dlIndicator.y + dlIndicator.height
+                x: Theme.horizontalPageMargin
+                visible: false
+
+                Label {
+                    id: dlLabel
+                    color: Theme.highlightColor
+                    text: qsTr("downloading records")
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                        top: parent.top
+                    }
+                }
+
+                BusyIndicator {
+                    id: dlIndicator
+                    running: parent.visible
+                    size: BusyIndicatorSize.Large
+                    anchors {
+                        top: dlLabel.bottom
+                        topMargin: Theme.paddingLarge
+                    }
+                }
+            }
         }
     }
 
