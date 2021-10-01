@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import Sailfish.Silica 1.0
 import "../utils/datab.js" as DataB
+import "../utils/scripts.js" as Scripts
 import "../components/"
 
 Page {
@@ -21,6 +22,9 @@ Page {
         property real deepTime
         // minutes
         property real latencyTime
+        // percentages
+        property real restless
+        property real timeEfficiency
         // scores
         property int timeScore
         property int disturbances
@@ -48,7 +52,7 @@ Page {
                 onClicked: {
                     jsonString.visible = !jsonString.visible
                     if (jsonString.visible)
-                        jsonString.text = oura.printSleep()
+                        jsonString.text = ouraCloud.printSleep()
                 }
             }
             MenuItem {
@@ -85,7 +89,7 @@ Page {
                     dialog.accepted.connect( function() {
                         value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
-                        oura.setDateConsidered(summaryDate)
+                        ouraCloud.setDateConsidered(summaryDate)
                         updateValues()
                     } )
                 }
@@ -196,17 +200,19 @@ Page {
                         label: qsTr("midpoint")
                         value: validDate? locals.midpoint : "-"
                     }
+
+                    DetailItem {
+                        id: timeRestless
+                        label: qsTr("restless")
+                        value: validDate? locals.restless + " %" : "-"
+                    }
+
+                    DetailItem {
+                        id: timeEfficiency
+                        label: qsTr("sleep time")
+                        value: validDate? locals.timeEfficiency + " %" : "-"
+                    }
                 }
-            }
-
-            DetailItem {
-                id: timeRestless
-                label: qsTr("restless")
-            }
-
-            DetailItem {
-                id: timeEfficiency
-                label: qsTr("sleep time")
             }
 
             ModExpandingSection {
@@ -286,10 +292,10 @@ Page {
 
                 function fillData() {
                     var table = DataB.keySleep, cell = "hypnogram_5min";
-                    var str = oura.value(table, cell);
+                    var str = ouraCloud.value(table, cell);
                     var i, j, c, clr, lbl, dMin = 5;
-                    var hour = oura.startHour(table);
-                    var minute = oura.startMinute(table);
+                    var hour = ouraCloud.startHour(table);
+                    var minute = ouraCloud.startMinute(table);
 
                     //"hypnogram_5min": "443432222211222333321112222222222111133333322221112233333333332232222334",
                     // '4 = '1' = deep (N3) sleep - '2' = light (N1 or N2) sleep - '3' = REM sleep - '4' = awake
@@ -315,9 +321,9 @@ Page {
                                 lbl = printTime(hour, minute)
                             else
                                 lbl = "";
-                            addData(5 - c, clr, lbl);
+                            addData("", 5 - c, clr, lbl);
                         } else {
-                            addData(0, "transparent", "");
+                            addData("", 0, "transparent", "");
                         }
 
                         minute += dMin;
@@ -371,10 +377,10 @@ Page {
 
                 function fillData() {
                     var table = DataB.keySleep, cell = "hr_5min";
-                    var str = oura.value(table, cell), arr;
+                    var str = ouraCloud.value(table, cell), arr;
                     var c, clr, dMin = 5, lbl;
-                    var hour = oura.startHour(table);
-                    var minute = oura.startMinute(table);
+                    var hour = ouraCloud.startHour(table);
+                    var minute = ouraCloud.startMinute(table);
 
                     //"hr_5min": [0, 53, 51, 0, 50, 50, 49, 49, 50, 50, 51, 52, 52, 51, 53, 58, 60, 60, 59, 58, 58, 58, 58, 55, 55, 55, 55, 56, 56, 55, 53, 53, 53, 53, 53, 53, 57, 58, 60, 60, 59, 57, 59, 58, 56, 56, 56, 56, 55, 55, 56, 56, 57, 58, 55, 56, 57, 60, 58, 58, 59, 57, 54, 54, 53, 52, 52, 55, 53, 54, 56, 0],
                     //console.log("5min " + i + ", " + j + str.substring(i,j))
@@ -400,7 +406,7 @@ Page {
                         } else {
                             lbl = "";
                         }
-                        addData(c, clr, lbl);
+                        addData("", c, clr, lbl);
 
                         minute += dMin;
                         if (minute >= 60){
@@ -452,10 +458,10 @@ Page {
 
                 function fillData() {
                     var table = DataB.keySleep, cell = "rmssd_5min";
-                    var str = oura.value(table, cell), arr;
+                    var str = ouraCloud.value(table, cell), arr;
                     var c, clr, lbl, dMin=5;
-                    var hour = oura.startHour(table);
-                    var minute = oura.startMinute(table);
+                    var hour = ouraCloud.startHour(table);
+                    var minute = ouraCloud.startMinute(table);
 
                     //"rmssd_5min": [0, 0, 62, 0, 75, 52, 56, 56, 64, 57, 55, 78, 77, 83, 70, 35, 21, 25, 49, 44, 48, 48, 62, 69, 66, 64, 79, 59, 67, 66, 70, 63, 53, 57, 53, 57, 38, 26, 18, 24, 30, 35, 36, 46, 53, 59, 50, 50, 53, 53, 57, 52, 41, 37, 49, 47, 48, 35, 32, 34, 52, 57, 62, 57, 70, 81, 81, 65, 69, 72, 64, 0]
                     //console.log("5min " + i + ", " + j + str.substring(i,j))
@@ -480,7 +486,7 @@ Page {
                             lbl = "";
                         }
 
-                        addData(c, clr, lbl);
+                        addData("", c, clr, lbl);
                         minute += dMin;
                         if (minute >= 60){
                             minute -= 60;
@@ -555,7 +561,7 @@ Page {
         //summaryDate = new Date(ms);
         //tmpDate.setTime(ms);
         //summaryDate = tmpDate;
-        summaryDate = oura.dateChange(dayStep);
+        summaryDate = ouraCloud.dateChange(dayStep);
         //console.log("on " + summaryDate.toDateString() + " p.o. " + tmpDate.toDateString() + " -1");
         txtDate.value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat);
         return;
@@ -563,39 +569,39 @@ Page {
 
     function updateValues() {
         DataB.log("sleep update 1: " + new Date().toTimeString().substring(0,8) )
-        //startTime.value = printTime(oura.startHour(DataB.keySleep), oura.startMinute(DataB.keySleep))
-        validDate = oura.dateAvailable(DataB.keySleep, summaryDate);
+        //startTime.value = printTime(ouraCloud.startHour(DataB.keySleep), ouraCloud.startMinute(DataB.keySleep))
+        validDate = ouraCloud.dateAvailable(DataB.keySleep, summaryDate);
         sleepType.chartData.clear();
         hr5min.chartData.clear();
         var5min.chartData.clear();
         if (validDate) {
-            //startTime.text = printTime(oura.startHour(DataB.keySleep), oura.startMinute(DataB.keySleep));
-            //endTime.text = printTime(oura.endHour(DataB.keySleep), oura.endMinute(DataB.keySleep));
-            scoreSleep.value = oura.value(DataB.keySleep, "score");
-            locals.timeScore = oura.value(DataB.keySleep, "score_total");
-            locals.disturbances = oura.value(DataB.keySleep, "score_disturbances");
-            locals.efficiency = oura.value(DataB.keySleep, "score_efficiency");
-            locals.latencyScore = oura.value(DataB.keySleep, "score_latency");
-            locals.remScore = oura.value(DataB.keySleep, "score_rem");
-            locals.deepScore = oura.value(DataB.keySleep, "score_deep");
-            locals.alignment = oura.value(DataB.keySleep, "score_alignment");
-            timeTotal.value = oura.value(DataB.keySleep, "total")/3600;
-            locals.bedTime = oura.value(DataB.keySleep, "duration")/3600;
-            locals.awake = oura.value(DataB.keySleep, "awake")/3600;
-            locals.lightTime = oura.value(DataB.keySleep, "light")/3600;
-            locals.remTime = oura.value(DataB.keySleep, "rem")/3600;
-            locals.deepTime = oura.value(DataB.keySleep, "deep")/3600;
-            locals.latencyTime = oura.value(DataB.keySleep, "onset_latency")/60;
-            //console.log(oura.value(DataB.keySleep, "midpoint_time") + " keskipiste <<<<<<<<<<<")
-            locals.midpoint = printTime(oura.startHour(DataB.keySleep), oura.startMinute(DataB.keySleep),
-                                           0, oura.value(DataB.keySleep, "midpoint_time")/60);
-            timeRestless.value = oura.value(DataB.keySleep, "restless") + " %";
-            timeEfficiency.value = oura.value(DataB.keySleep, "efficiency") + " %";
-            locals.hrMin = oura.value(DataB.keySleep, "hr_lowest");
-            locals.hrAve = oura.value(DataB.keySleep, "hr_average");
-            locals.hrVariation = oura.value(DataB.keySleep, "rmssd");
-            locals.breath = oura.value(DataB.keySleep, "breath_average")
-            locals.dT = oura.value(DataB.keySleep, "temperature_delta");
+            //startTime.text = printTime(ouraCloud.startHour(DataB.keySleep), ouraCloud.startMinute(DataB.keySleep));
+            //endTime.text = printTime(ouraCloud.endHour(DataB.keySleep), ouraCloud.endMinute(DataB.keySleep));
+            scoreSleep.value = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score"), 0);
+            locals.timeScore = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_total"), 0);
+            locals.disturbances = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_disturbances"), 0);
+            locals.efficiency = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_efficiency"), 0);
+            locals.latencyScore = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_latency"), 0);
+            locals.remScore = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_rem"), 0);
+            locals.deepScore = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_deep"), 0);
+            locals.alignment = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_alignment"), 0);
+            timeTotal.value = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "total"), 0)/3600;
+            locals.bedTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "duration"), 0)/3600;
+            locals.awake = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "awake"), 0)/3600;
+            locals.lightTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "light"), 0)/3600;
+            locals.remTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "rem"), 0)/3600;
+            locals.deepTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "deep"), 0)/3600;
+            locals.latencyTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "onset_latency"), 0)/60;
+            //console.log(ouraCloud.value(DataB.keySleep, "midpoint_time") + " keskipiste <<<<<<<<<<<")
+            locals.midpoint = printTime(ouraCloud.startHour(DataB.keySleep), ouraCloud.startMinute(DataB.keySleep),
+                                           0, ouraCloud.value(DataB.keySleep, "midpoint_time")/60);
+            locals.restless = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "restless"), 0);
+            locals.timeEfficiency = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "efficiency"), 0);
+            locals.hrMin = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "hr_lowest"), 0);
+            locals.hrAve = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "hr_average"), 0);
+            locals.hrVariation = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "rmssd"), 0);
+            locals.breath = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "breath_average"), 0);
+            locals.dT = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "temperature_delta"), 0);
             DataB.log("sleep update 2: " + new Date().toTimeString().substring(0,8) )
             sleepType.fillData();
             DataB.log("sleep update 3: " + new Date().toTimeString().substring(0,8) )
@@ -606,8 +612,8 @@ Page {
         } else {
             //startTime.text = "--:--";
             //endTime.text = "--:--";
-            timeRestless.value = "-";
-            timeEfficiency.value = "-";
+            //timeRestless.value = "-";
+            //timeEfficiency.value = "-";
             //hrMin.value = "-";
             //hrAve.value = "-";
             //hrVariation.value = "-";

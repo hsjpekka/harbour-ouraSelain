@@ -1,5 +1,5 @@
 .pragma library
-var dbas, settingsTable = []; // settingsTable = [{"key": string, "value": string}];
+var dbas, settingsTable = []; // settingsTable = [];
 var appLog = [];
 // database keys
 var keyPersonalToken = "personalToken";
@@ -9,10 +9,15 @@ var keyActivity = "activity", keyBedTime = "ideal_bedtimes", keyReadiness = "rea
 var keySleep = "sleep", keyUserInfo = "userInfo";
 var keyPeriod = "period_id", keyDate = "summary_date", keyDateBT = "date";
 
-// tables in database: 'ouraCloud'
+// tables in database:
+// 'ouraCloud'
 // {"index", "type", "record"}
 //   int,    string,  string
 // type = "activity" || "readiness" || "sleep" || "ideal_bedtimes"
+//
+// 'settings'
+// {"key", "value"}
+//  string, string
 
 function addCloudRecord(ind, type, str) {
     var query, result;
@@ -59,6 +64,23 @@ function addToSettings(key, value, toDb) {
 
     return;
 
+}
+
+function convertToYearMonthDate(dateStr) {
+    // yyyy-mm-dd -> result.year, result.month, result.date
+    var result = {"year": 1, "month":14, "date": 34}, year, month, date;
+    var arr, reg = /^\d\d\d\d-\d\d?-\d\d?/;
+    if (reg.test(dateStr)) {
+        arr = dateStr.split("-");
+        result.year = arr[0]*1.0;
+        result.month = arr[1]*1.0;
+        result.date = arr[2]*1.0;
+    } else {
+        result.year = 0;
+        result.month = 0;
+        result.date = 0;
+    }
+    return result;
 }
 
 function createTables() {
@@ -177,23 +199,41 @@ function modifyQuotes(str) {
     return str;
 }
 
-function readCloudDb(type, ymdp, verbal) {
-    var i, iN, query, result, tbl;
+function readCloudDb(type, ymdp1, ymdp2, verbal) { // from date ymdp1 to ymdp2
+    var i, iN, query, result, tbl, change;
+
+    console.log("" + type + " " + ymdp1 + " " + ymdp2 + " " + verbal)
 
     if (verbal === undefined) {
         verbal = true;
+    }
+    if (ymdp2 > 0 && ymdp1 > ymdp2) {
+        change = ymdp1;
+        ymdp1 = ymdp2;
+        ymdp2 = change;
     }
 
     if(dbas === null) return {"rows": {"length": -5}};
 
     query = "SELECT * FROM " + dbTable;
-    if (ymdp && type) {
-        query += " WHERE " + keyType + "='" + type + "' AND " + keyYMDP + "=" + ymdp;
+    if ((ymdp1 > 0) && (ymdp2 > 0) && (type > "")) {
+        query += " WHERE " + keyType + "='" + type + "' AND " + keyYMDP + ">=" + ymdp1 +
+                 " AND " + keyYMDP + "<=" + ymdp2;
+    } else if (ymdp1 > 0 && ymdp2 > 0) {
+        query += " WHERE " + keyYMDP + ">=" + ymdp1 + " AND " + keyYMDP + "<=" + ymdp2;
+    } else if ((ymdp1 > 0) && (type > "")) {
+            query += " WHERE " + keyType + "='" + type + "' AND " + keyYMDP + ">=" + ymdp1;
+    } else if ((ymdp2 > 0) && (type > "")) {
+            query += " WHERE " + keyType + "='" + type + "' AND " + keyYMDP + "<=" + ymdp2;
+    } else if (ymdp1 > 0) {
+        query += " WHERE " + keyYMDP + ">=" + ymdp1;
+    } else if (ymdp2 > 0) {
+        query += " WHERE " + keyYMDP + "<=" + ymdp2;
     } else if (type) {
         query += " WHERE " + keyType + "='" + type + "'";
-    } else if (ymdp) {
-        query += " WHERE " + keyYMDP + "=" + ymdp;
     }
+
+    console.log(query)
 
     try {
         dbas.transaction(function(tx) {
@@ -267,23 +307,6 @@ function readSettingsDb() {
     return N;
 }
 
-function readYearMonthDateRecord(dateStr) {
-    // yyyy-mm-dd -> result.year, result.month, result.date
-    var result = {"year": 1, "month":14, "date": 34}, year, month, date;
-    var arr, reg = /^\d\d\d\d-\d\d?-\d\d?/;
-    if (reg.test(dateStr)) {
-        arr = dateStr.split("-");
-        result.year = arr[0]*1.0;
-        result.month = arr[1]*1.0;
-        result.date = arr[2]*1.0;
-    } else {
-        result.year = 0;
-        result.month = 0;
-        result.date = 0;
-    }
-    return result;
-}
-
 function removeFromSettings(key) {
     var mj = "DELETE settings WHERE key = '" + key + "'"
 
@@ -301,6 +324,7 @@ function removeFromSettings(key) {
     return 0;
 }
 
+/*
 function removeTableCloud() {
     var query;
     query = "DROP TABLE " + dbTable;    
@@ -316,18 +340,42 @@ function removeTableCloud() {
 
     return
 }
+// */
 
 function storeRecord(type, jsonRecord) {
     // jsonRecord = {"summary_date": "2016-10-11", ...}
-
     var year=0, month=0, date=0, period=0, ymd, ind;
-    var result, record;
+    var result, record, dateKey;
+
+    if (type === keyActivity || type === keyReadiness || type === keySleep) {
+        dateKey = keyDate;
+    } else if (type === keyBedTime) {
+        dateKey = keyDateBT;
+    }
+
+    if (jsonRecord[dateKey] === undefined) {
+        log("No " + dateKey + " in the " + type + "-record.");
+        return 1;
+    } else {
+        ymd = convertToYearMonthDate(jsonRecord[keyDate]);
+        year = ymd.year;
+        month = ymd.month;
+        date = ymd.date;
+    }
+
+    if (jsonRecord[keyPeriod] === undefined) {
+        period = 0;
+    } else {
+        period = jsonRecord[keyPeriod];
+    }
+
+    /*
     if (type === keyActivity || type === keyReadiness || type === keySleep) {
         if (jsonRecord[keyDate] === undefined) {
             log("No summary_date in the " + type + "-record.");
             return 1;
         } else {
-            ymd = readYearMonthDateRecord(jsonRecord[keyDate]);
+            ymd = convertToYearMonthDate(jsonRecord[keyDate]);
             year = ymd.year;
             month = ymd.month;
             date = ymd.date;
@@ -342,20 +390,22 @@ function storeRecord(type, jsonRecord) {
             log("No date in the " + type + "-record.");
             return 1;
         } else {
-            ymd = readYearMonthDateRecord(jsonRecord[keyDateBT]);
+            ymd = convertToYearMonthDate(jsonRecord[keyDateBT]);
             year = ymd.year;
             month = ymd.month;
             date = ymd.date;
             period = 0;
         }
     }
+    // */
 
     ind = ymdp(year, month, date, period);
-    result = readCloudDb(type, ind, false);
+    result = readCloudDb(type, ind, ind, false);
     record = JSON.stringify(jsonRecord);
     //console.log("" + record.slice(0,29) + " ::: " + jsonRecord + " ... " + result);
     if (result.rows !== undefined) {
         if (result.rows.length > 0) {
+            console.log("updating ._._. " + record.slice(0,29) + " ... ");
             return updateCloudRecord(ind, type, record);
         } else {
             return addCloudRecord(ind, type, record);
@@ -458,6 +508,16 @@ function updateSettings(key, value) {
 }
 
 function ymdp(year, month, date, period) {
+    if (month === undefined) {
+        month = 0;
+    }
+    if (date === undefined) {
+        date = 0;
+    }
+    if (period === undefined) {
+        period = 0;
+    }
+
     return ((year*20 + month)*50 + date)*100 + period;
 }
 

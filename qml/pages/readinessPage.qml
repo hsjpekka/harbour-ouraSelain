@@ -13,6 +13,9 @@ Page {
             DataB.log("readinessPage\n\n ")
         }
     }
+    Component.onCompleted: {
+        updateValues()
+    }
 
     SilicaFlickable {
         anchors.fill: parent
@@ -23,7 +26,7 @@ Page {
                 text: "json"
                 onClicked: {
                     jsonString.visible = !jsonString.visible
-                    jsonString.text = oura.printReadiness()
+                    jsonString.text = ouraCloud.printReadiness()
                 }
             }
             MenuItem {
@@ -69,7 +72,7 @@ Page {
                         value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
                         periodId = 0
-                        oura.setDateConsidered(summaryDate)
+                        ouraCloud.setDateConsidered(summaryDate)
                         updateValues()
                     } )
                 }
@@ -166,28 +169,24 @@ Page {
     function previousDay(dayStep) {
         if (dayStep === undefined)
             dayStep = -1;
-        summaryDate = oura.dateChange(dayStep);
+        summaryDate = ouraCloud.dateChange(dayStep);
         txtDate.value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat);
         periodId = 0;
-        maxPeriod = oura.periodCount(DataB.keyReadiness, summaryDate) - 1;
+        maxPeriod = ouraCloud.periodCount(DataB.keyReadiness, summaryDate) - 1;
         return;
     }
 
     function updateValues() {
-        itemScore.value = oura.value(DataB.keyReadiness, "score", summaryDate, periodId);
-        itemPrevNight.value = oura.value(DataB.keyReadiness, "score_previous_night", summaryDate, periodId);
-        itemSleepBalance.value = oura.value(DataB.keyReadiness, "score_sleep_balance", summaryDate, periodId);
-        itemPrevDay.value = oura.value(DataB.keyReadiness, "score_previous_day", summaryDate, periodId);
-        itemActivity.value = oura.value(DataB.keyReadiness, "score_activity_balance", summaryDate, periodId);
-        itemRestHr.value = oura.value(DataB.keyReadiness, "score_resting_hr", summaryDate, periodId);
-        itemHrv.value = oura.value(DataB.keyReadiness, "score_hrv_balance", summaryDate, periodId);
-        itemRecovery.value = oura.value(DataB.keyReadiness, "score_recovery_index", summaryDate, periodId);
-        itemTemperature.value = oura.value(DataB.keyReadiness, "score_temperature", summaryDate, periodId);
-        itemRestMode.value = oura.value(DataB.keyReadiness, "rest_mode_state", summaryDate, periodId);
+        itemScore.value = ouraCloud.value(DataB.keyReadiness, "score", summaryDate, periodId);
+        itemPrevNight.value = ouraCloud.value(DataB.keyReadiness, "score_previous_night", summaryDate, periodId);
+        itemSleepBalance.value = ouraCloud.value(DataB.keyReadiness, "score_sleep_balance", summaryDate, periodId);
+        itemPrevDay.value = ouraCloud.value(DataB.keyReadiness, "score_previous_day", summaryDate, periodId);
+        itemActivity.value = ouraCloud.value(DataB.keyReadiness, "score_activity_balance", summaryDate, periodId);
+        itemRestHr.value = ouraCloud.value(DataB.keyReadiness, "score_resting_hr", summaryDate, periodId);
+        itemHrv.value = ouraCloud.value(DataB.keyReadiness, "score_hrv_balance", summaryDate, periodId);
+        itemRecovery.value = ouraCloud.value(DataB.keyReadiness, "score_recovery_index", summaryDate, periodId);
+        itemTemperature.value = ouraCloud.value(DataB.keyReadiness, "score_temperature", summaryDate, periodId);
+        itemRestMode.value = ouraCloud.value(DataB.keyReadiness, "rest_mode_state", summaryDate, periodId);
         return;
-    }
-
-    Component.onCompleted: {
-        updateValues()
     }
 }

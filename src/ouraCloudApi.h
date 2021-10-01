@@ -1,5 +1,5 @@
-#ifndef OURAAPI_H
-#define OURAAPI_H
+#ifndef OURACLOUDAPI_H
+#define OURACLOUDAPI_H
 #include <QObject>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -9,13 +9,13 @@
 #include <QNetworkReply>
 //#include "xhttprequest.h"
 
-class ouraApi : public QObject
+class ouraCloudApi : public QObject
 {
     Q_OBJECT
 public:
-    ouraApi(QObject *parent = NULL);
+    ouraCloudApi(QObject *parent = NULL);
     Q_INVOKABLE int activity(int year=0, int month=0, int day=0);
-    Q_INVOKABLE double average(QString type, QString key, int year1=0, int month1=0, int day1=0, int days=7);
+    Q_INVOKABLE double average(QString type, QString key, int days=7, int year1=0, int month1=0, int day1=0);
     Q_INVOKABLE bool dateAvailable(QString summaryType, QDate date);
     Q_INVOKABLE QDate dateChange(int step = -1);
     Q_INVOKABLE void downloadOuraCloud();
@@ -53,6 +53,7 @@ public:
     Q_INVOKABLE QString value(QString summaryType, QString key);
     Q_INVOKABLE QString value(QString summaryType, QString key, int i0);
     Q_INVOKABLE QString value(QString summaryType, QString key, QDate date, int i0=0);
+    Q_INVOKABLE int yyyymmddpp(QString dateStr, int period=0);
     enum ContentType {Activity, BedTimes, Readiness, Sleep, User, TypeError};
     Q_ENUM(ContentType)
     QString getStatus(); // turha
@@ -124,8 +125,7 @@ private:
     QJsonValue valueSleep(QString key, QDate date = QDate::currentDate(), int i0=-1);
     ContentType valueType(QString summaryType);
     QJsonValue valueUser(QString key);
-    int yyyymmddpp(QString dateStr, int period);
     //QString networkErrorTxt(QNetworkReply::NetworkError type);
 };
 
-#endif // OURAAPI_H
+#endif // OURACLOUDAPI_H

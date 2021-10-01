@@ -1,7 +1,7 @@
 #include <sailfishapp.h>
 #include <QtQuick>
 #include <QScopedPointer>
-#include "ouraapi.h"
+#include "ouraCloudApi.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
     QScopedPointer<QGuiApplication> app(SailfishApp::application(argc, argv));
     QScopedPointer<QQuickView> view(SailfishApp::createView());
 
-    ouraApi oura;
-    view->engine()->rootContext()->setContextProperty("oura", &oura);
+    ouraCloudApi ouraCloud;
+    view->engine()->rootContext()->setContextProperty("ouraCloud", &ouraCloud);
     //engine.load(QUrl(QLatin1String(SailfishApp::pathTo("qml/harbour-oura.qml"))));//("qrc:/main.qml")));
 
     // If you wish to publish your app on the Jolla harbour, follow

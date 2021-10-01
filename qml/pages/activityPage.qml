@@ -44,7 +44,7 @@ Page {
     }
 
     Connections {
-        target: oura
+        target: ouraCloud
         onFinishedActivity: {
             updateValues()
         }
@@ -60,7 +60,7 @@ Page {
                 onClicked: {
                     jsonString.visible = !jsonString.visible
                     if (jsonString.visible)
-                        jsonString.text = oura.printActivity()
+                        jsonString.text = ouraCloud.printActivity()
                 }
             }
             MenuItem {
@@ -97,7 +97,7 @@ Page {
                     dialog.accepted.connect( function() {
                         value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
-                        oura.setDateConsidered(summaryDate)
+                        ouraCloud.setDateConsidered(summaryDate)
                         updateValues()
                     } )
                 }
@@ -321,10 +321,10 @@ Page {
 
                 function fillData() {
                     var table = DataB.keyActivity, cell = "class_5min";
-                    var str = oura.value(table, cell);
+                    var str = ouraCloud.value(table, cell);
                     var i, j, c, clr;
-                    var hour = oura.startHour(table);
-                    var minute = oura.startMinute(table);
+                    var hour = ouraCloud.startHour(table);
+                    var minute = ouraCloud.startMinute(table);
 
                     //console.log("5min " + i + ", " + j + ", " + str.substring(i,j))
 
@@ -338,9 +338,9 @@ Page {
                             else
                                 clr = Theme.highlightDimmerColor
                             if (minute === 0 && hour%2 === 0)
-                                addData(c, clr, printTime(hour, minute))
+                                addData("", c, clr, printTime(hour, minute))
                             else
-                                addData(c, clr, "");
+                                addData("", c, clr, "");
                         }
                         minute += 5;
                         if (minute >= 60){
@@ -411,12 +411,12 @@ Page {
 
                 function fillData() {
                     var table = DataB.keyActivity, cell = "met_1min";
-                    var str = oura.value(table, cell), arr;
+                    var str = ouraCloud.value(table, cell), arr;
                     var i = str.indexOf("[") + 1, j = str.indexOf("]"), c, clr;
-                    var hour = oura.startHour(table);
-                    var minute = oura.startMinute(table);
+                    var hour = ouraCloud.startHour(table);
+                    var minute = ouraCloud.startMinute(table);
                     var max = 0;
-                    //var time = oura.value(table, "day_start", summaryDate), date0, h0, m0, t0;
+                    //var time = ouraCloud.value(table, "day_start", summaryDate), date0, h0, m0, t0;
                     str = str.substring(i, j).trim();
                     //DataB.log(cell + " " + str);
 
@@ -431,9 +431,9 @@ Page {
                             else
                                 clr = Theme.highlightDimmerColor
                             if (minute === 0 || minute === 30)
-                                addData(c, clr, printTime(hour, minute))
+                                addData("", c, clr, printTime(hour, minute))
                             else
-                                addData(c, clr, "");
+                                addData("", c, clr, "");
                             if (c > max) {
                                 max = c;
                             }
@@ -494,7 +494,7 @@ Page {
     function previousDay(dayStep) {
         if (dayStep === undefined)
             dayStep = -1;
-        summaryDate = oura.dateChange(dayStep);
+        summaryDate = ouraCloud.dateChange(dayStep);
         //console.log("on " + summaryDate.toDateString() + " p.o. " + tmpDate.toDateString() + " -1");
         txtDate.value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat);
         return;
@@ -502,41 +502,41 @@ Page {
 
     function updateValues() {
         //DataB.log("activity update 1: " + new Date().toTimeString().substring(0,8))
-        validDate = oura.dateAvailable(DataB.keySleep, summaryDate);
+        validDate = ouraCloud.dateAvailable(DataB.keySleep, summaryDate);
         //console.log("ActivityPage - Löytyykö päivä " + summaryDate + "? " + validDate);
         met1min.chartData.clear();
         met5min.chartData.clear();
         if (validDate) {
             /* scores */
-            locals.score = oura.value(DataB.keyActivity, "score")*1.0;
-            locals.stayActive = oura.value(DataB.keyActivity, "score_stay_active")*1.0;
-            locals.moveHourly = oura.value(DataB.keyActivity, "score_move_every_hour")*1.0;
-            locals.meetTargets = oura.value(DataB.keyActivity, "score_meet_daily_targets")*1.0;
-            locals.trainingFreq = oura.value(DataB.keyActivity, "score_training_frequency")*1.0;
-            locals.trainingVol = oura.value(DataB.keyActivity, "score_training_volume")*1.0;
-            locals.recovery = oura.value(DataB.keyActivity, "score_recovery_time")*1.0;
+            locals.score = ouraCloud.value(DataB.keyActivity, "score")*1.0;
+            locals.stayActive = ouraCloud.value(DataB.keyActivity, "score_stay_active")*1.0;
+            locals.moveHourly = ouraCloud.value(DataB.keyActivity, "score_move_every_hour")*1.0;
+            locals.meetTargets = ouraCloud.value(DataB.keyActivity, "score_meet_daily_targets")*1.0;
+            locals.trainingFreq = ouraCloud.value(DataB.keyActivity, "score_training_frequency")*1.0;
+            locals.trainingVol = ouraCloud.value(DataB.keyActivity, "score_training_volume")*1.0;
+            locals.recovery = ouraCloud.value(DataB.keyActivity, "score_recovery_time")*1.0;
             /* minutes */
-            locals.nonWear = hm(oura.value(DataB.keyActivity, "non_wear"));
-            locals.rest = hm(oura.value(DataB.keyActivity, "rest"));
-            locals.timeInactive = hm(oura.value(DataB.keyActivity, "inactive"));
-            locals.timeLow = hm(oura.value(DataB.keyActivity, "low"));
-            locals.timeMedium = hm(oura.value(DataB.keyActivity, "medium"));
-            locals.timeHigh = hm(oura.value(DataB.keyActivity, "high"));
-            locals.timeActive = hm(oura.value(DataB.keyActivity, "low")*1.0 +
-                                     oura.value(DataB.keyActivity, "medium")*1.0 +
-                                     oura.value(DataB.keyActivity, "high")*1.0);
+            locals.nonWear = hm(ouraCloud.value(DataB.keyActivity, "non_wear"));
+            locals.rest = hm(ouraCloud.value(DataB.keyActivity, "rest"));
+            locals.timeInactive = hm(ouraCloud.value(DataB.keyActivity, "inactive"));
+            locals.timeLow = hm(ouraCloud.value(DataB.keyActivity, "low"));
+            locals.timeMedium = hm(ouraCloud.value(DataB.keyActivity, "medium"));
+            locals.timeHigh = hm(ouraCloud.value(DataB.keyActivity, "high"));
+            locals.timeActive = hm(ouraCloud.value(DataB.keyActivity, "low")*1.0 +
+                                     ouraCloud.value(DataB.keyActivity, "medium")*1.0 +
+                                     ouraCloud.value(DataB.keyActivity, "high")*1.0);
             /* misc */
-            locals.movement = oura.value(DataB.keyActivity, "daily_movement")*1.0;
-            locals.steps = oura.value(DataB.keyActivity, "steps")*1.0;
-            locals.alerts = oura.value(DataB.keyActivity, "inactivity_alerts")*1.0;
-            locals.totalCalories = oura.value(DataB.keyActivity, "cal_total")*1.0;
-            locals.activeCalories = oura.value(DataB.keyActivity, "cal_active")*1.0;
-            locals.metInactive = oura.value(DataB.keyActivity, "met_min_inactive")
-            locals.metLow = oura.value(DataB.keyActivity, "met_min_low")
-            locals.metMedium = oura.value(DataB.keyActivity, "met_min_medium")
-            locals.metMediumPlus = oura.value(DataB.keyActivity, "met_min_medium_plus")
-            locals.metHigh = oura.value(DataB.keyActivity, "met_min_high")
-            locals.averageMet = oura.value(DataB.keyActivity, "average_met")
+            locals.movement = ouraCloud.value(DataB.keyActivity, "daily_movement")*1.0;
+            locals.steps = ouraCloud.value(DataB.keyActivity, "steps")*1.0;
+            locals.alerts = ouraCloud.value(DataB.keyActivity, "inactivity_alerts")*1.0;
+            locals.totalCalories = ouraCloud.value(DataB.keyActivity, "cal_total")*1.0;
+            locals.activeCalories = ouraCloud.value(DataB.keyActivity, "cal_active")*1.0;
+            locals.metInactive = ouraCloud.value(DataB.keyActivity, "met_min_inactive")
+            locals.metLow = ouraCloud.value(DataB.keyActivity, "met_min_low")
+            locals.metMedium = ouraCloud.value(DataB.keyActivity, "met_min_medium")
+            locals.metMediumPlus = ouraCloud.value(DataB.keyActivity, "met_min_medium_plus")
+            locals.metHigh = ouraCloud.value(DataB.keyActivity, "met_min_high")
+            locals.averageMet = ouraCloud.value(DataB.keyActivity, "average_met")
             //DataB.log("activity update 2: " + new Date().toTimeString().substring(0,8) )
             met5min.fillData();
             //DataB.log("activity update 3: " + new Date().toTimeString().substring(0,8) )
@@ -551,5 +551,4 @@ Page {
         h = ((min-m)/60).toFixed(0);
         return h + " h " + m + " min";
     }
-
 }

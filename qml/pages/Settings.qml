@@ -9,13 +9,15 @@ Page {
 
     property bool changeToken: false
     property string token
+    property bool reloaded: false
 
     signal setToken(string newToken)
+    signal cloudReloaded(date firstReloaded)
 
     function getUserData() {
-        var str = oura.myName(qsTr("name unknown"));
-        age.value = oura.value("userinfo","age");
-        gender.value = oura.value("userinfo","gender");
+        var str = ouraCloud.myName(qsTr("name unknown"));
+        age.value = ouraCloud.value("userinfo","age");
+        gender.value = ouraCloud.value("userinfo","gender");
         user.value = str;
         if (str.indexOf("@") > 0) {
             user.label = qsTr("email");
@@ -23,31 +25,42 @@ Page {
             user.label = qsTr("name");
         }
 
-        weight.value = oura.value("userinfo","weight");
+        weight.value = ouraCloud.value("userinfo","weight");
         return;
     }
 
     Connections {
-        target: oura
+        target: ouraCloud
         onFinishedActivity: {
-            downloadLabel.visible = oura.isLoading()
+            activityReady.ready = true
+            downloadLabel.visible = ouraCloud.isLoading()
+            console.log("activity luettu")
         }
         onFinishedSleep: {
-            downloadLabel.visible = oura.isLoading()
+            sleepReady.ready = true
+            downloadLabel.visible = ouraCloud.isLoading()
+            console.log("sleep luettu")
         }
         onFinishedReadiness: {
-            downloadLabel.visible = oura.isLoading()
+            readinessReady.ready = true
+            downloadLabel.visible = ouraCloud.isLoading()
+            console.log("readiness luettu")
         }
         onFinishedBedTimes: {
-            downloadLabel.visible = oura.isLoading()
+            bedtimesReady.ready = true
+            downloadLabel.visible = ouraCloud.isLoading()
+            console.log("bedtimes luettu")
         }
         onFinishedInfo: {
-            downloadLabel.visible = oura.isLoading()
+            infoReady.ready = true
+            downloadLabel.visible = ouraCloud.isLoading()
             getUserData()
+            console.log("info luettu")
         }
     }
 
     SilicaFlickable {
+        id: flickingArea
         anchors.fill: parent
         contentHeight: col.height
         width: parent.width
@@ -57,8 +70,8 @@ Page {
                 text: qsTr("refresh data")
                 onClicked: {
                     console.log("==== vaihtuu ==== " + token + ", " + tokenField.text)
-                    oura.setPersonalAccessToken(tokenField.text)
-                    oura.refreshDownloads()
+                    ouraCloud.setPersonalAccessToken(tokenField.text)
+                    ouraCloud.refreshDownloads()
                 }
             }
 
@@ -140,14 +153,16 @@ Page {
             TextField {
                 id: tokenField
                 placeholderText: qsTr("for example: %1").arg("A3EDG66YA...")
+                readOnly: true
                 text: token
-                label: changeToken? qsTr("token changed"): qsTr("token")
+                label: readOnly? qsTr("press to change"): qsTr("token")
                 EnterKey.onClicked: {
                     focus = false
+                    readOnly = true
                 }
                 width: parent.width
                 onPressAndHold: {
-                    text = token
+                    readOnly = false
                 }
                 onTextChanged: {
                     changeToken = true
@@ -165,12 +180,12 @@ Page {
                 x: Theme.horizontalPageMargin
                 text: qsTr("The first downloaded record from OuraCloud is from %1. " +
                            "To retrieve older records choose the date below."
-                           ).arg(Qt.formatDate(oura.firstDate(),Qt.DefaultLocaleShortDate))
+                           ).arg(Qt.formatDate(ouraCloud.firstDate(),Qt.DefaultLocaleShortDate))
             }
 
             ValueButton {
                 id: dateButton
-                label: qsTr("Fetch dates starting from")
+                label: qsTr("From date")
                 value: firstDate.toDateString(Qt.locale(), Locale.ShortFormat)
                 onClicked: {
                     var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
@@ -184,7 +199,7 @@ Page {
                     } )
                 }
 
-                property date firstDate: oura.firstDate()
+                property date firstDate: ouraCloud.firstDate()
                 property int  year: firstDate.getFullYear()
                 property int  month: firstDate.getMonth()
                 property int  day: firstDate.getDate()
@@ -195,9 +210,21 @@ Page {
                 text: qsTr("Fetch old records")
                 anchors.horizontalCenter: parent.horizontalCenter
                 onClicked: {
-                    oura.setStartDate(dateButton.year, dateButton.month, dateButton.day)
-                    oura.downloadOuraCloud()
+                    ouraCloud.setStartDate(dateButton.year, dateButton.month, dateButton.day)
+                    ouraCloud.downloadOuraCloud()
                     downloadLabel.visible = true
+                    activityReady.ready = false
+                    sleepReady.ready = false
+                    readinessReady.ready = false
+                    bedtimesReady.ready = false
+                    infoReady.ready = false
+
+                    // move to show the rotating circle
+                    flickingArea.scrollToBottom()
+
+                    reloaded = true
+                    //
+                    cloudReloaded(dateButton.firstDate)
                 }
             }
 
@@ -231,7 +258,77 @@ Page {
                     anchors {
                         top: dlLabel.bottom
                         topMargin: Theme.paddingLarge
+                        horizontalCenter: parent.horizontalCenter
                     }
+                }
+
+                Label {
+                    id: infoReady
+                    text: qsTr("info")
+                    color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
+                    anchors {
+                        bottom: dlIndicator.verticalCenter
+                        bottomMargin: Theme.paddingSmall
+                        right: bedtimesReady.left
+                        rightMargin: Theme.paddingMedium
+                    }
+
+                    property bool ready: false
+                }
+
+                Label {
+                    id: activityReady
+                    text: qsTr("activity")
+                    color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
+                    anchors {
+                        top: dlIndicator.verticalCenter
+                        topMargin: Theme.paddingSmall
+                        left: dlIndicator.horizontalCenter
+                        leftMargin: Theme.paddingMedium
+                    }
+
+                    property bool ready: false
+                }
+
+                Label {
+                    id: bedtimesReady
+                    text: qsTr("bedtimes")
+                    color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
+                    anchors {
+                        horizontalCenter: dlIndicator.horizontalCenter
+                        bottom: dlIndicator.verticalCenter
+                        bottomMargin: Theme.paddingSmall
+                    }
+
+                    property bool ready: false
+                }
+
+                Label {
+                    id: readinessReady
+                    text: qsTr("readiness")
+                    color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
+                    anchors {
+                        top: dlIndicator.verticalCenter
+                        topMargin: Theme.paddingSmall
+                        right: dlIndicator.horizontalCenter
+                        rightMargin: Theme.paddingMedium
+                    }
+
+                    property bool ready: false
+                }
+
+                Label {
+                    id: sleepReady
+                    text: qsTr("sleep")
+                    color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
+                    anchors {
+                        bottom: dlIndicator.verticalCenter
+                        bottomMargin: Theme.paddingSmall
+                        left: bedtimesReady.right
+                        leftMargin: Theme.paddingMedium
+                    }
+
+                    property bool ready: false
                 }
             }
         }
@@ -246,6 +343,8 @@ Page {
         if (changeToken) {
             token = tokenField.text
             setToken(tokenField.text)
+        } else if (reloaded) {
+            //cloudReloaded(dateButton.firstDate)
         }
     }
 }

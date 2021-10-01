@@ -7,19 +7,19 @@ Page {
     id: page
 
     // "index", "type", "record"
-    property string pageTitle
+    property string pageTitle: qsTr("Database viewer")
 
     ListModel {
         id: records
 
         ListElement {
-            card: ""
-            key: ""
-            value: ""
+            card: "" // yyyymmddpp
+            dataKey: ""
+            dataValue: ""
         }
 
         function add(section, key, data) {
-            records.append({ "card": section, "key": key, "value": data })
+            records.append({ "card": section + "", "dataKey": key + "", "dataValue": data + "" })
         }
     }
 
@@ -100,7 +100,7 @@ Page {
 
         Item {
             width: page.width - 2*x
-            height: singleRow? lbl.height : dataTxt.y + dataTxt.height
+            height: dataTxt.y + dataTxt.height
             x: Theme.horizontalPageMargin
 
             property bool singleRow: true
@@ -109,16 +109,16 @@ Page {
 
             Label {
                 id: lbl
-                width: parent.width/2 - Theme.horizontalPageMargin
+                width: parent.width
                 text: parent.lblTxt + " :"
                 color: Theme.secondaryHighlightColor
             }
 
             Label {
                 id: dataTxt
-                x: parent.singleRow ? parent.width - lbl.width : parent.width
-                y: parent.singleRow ? 0 : lbl.height + Theme.paddingSmall
-                width: parent.width - lbl.width
+                x: Theme.paddingLarge
+                y: lbl.height + Theme.paddingSmall
+                width: parent.width - x
                 wrapMode: parent.singleRow ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere
                 truncationMode: TruncationMode.Fade
                 text: parent.dbTxt
@@ -135,11 +135,23 @@ Page {
         }
     }
 
+    Label { // empty page hint
+        id: emptyLabel
+        text: qsTr("use the pull down menu")
+        color: Theme.highlightColor
+        font.pixelSize: Theme.fontSizeLarge
+        anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - 2*x
+        x: Theme.horizontalPageMargin
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+    }
+
     SilicaListView {
        height: page.height
        width: parent.width
 
-       PushUpMenu {
+       PullDownMenu {
            MenuItem {
                text: qsTr("activity")
                onClicked: {
@@ -172,13 +184,14 @@ Page {
            }
        }
 
+       model: records
        header: Component {
            PageHeader {
                title: pageTitle
            }
        }
        delegate: dataFieldView
-       section.property: card
+       section.property: "card"
        section.delegate: SectionHeader {
            text: section
        }
@@ -186,22 +199,10 @@ Page {
        VerticalScrollDecorator {}
    }
 
-    // *
-    SilicaFlickable {
-        width: parent.width
-        contentHeight: column.height
-
-        Column {
-            id: column
-            width: parent.width
-
-        }
-    }
-
-    // */
-
     function changeRecord(recordType) {
-        var i=0, iN, rec, key, list, sect;
+        var i=0, iN, rec, key, list, sect, table;
+        emptyLabel.visible = false;
+        records.clear();
         if (recordType === "OuraCloud") {
             rec = JSON.parse(oura.printInfo());
             for (key in rec) {
@@ -267,16 +268,35 @@ Page {
                 }
             }
         } else {
-            iN = oura.numberOfRecords(recordType);
-            while (i < iN) {
-                rec = oura.recordNr(recordType, i);
+            table = DataB.readCloudDb(recordType);
+            iN = table.rows.length;
+            while( i < iN) {
+                rec = table.rows[i];
                 for (key in rec) {
-                    records.add(i, key, rec[key])
+                    if (i === 0) {
+                        console.log(key + " :: " + rec[key]);
+                    }
+                    records.add(i, key, rec[key]);
                 }
                 i++;
+                if (i > 5) {
+                    i=iN+1;
+                }
             }
+
+            //iN = oura.numberOfRecords(recordType);
+            //while (i < iN) {
+            //    rec = oura.recordNr(recordType, i);
+            //    for (key in rec) {
+            //        records.add(i, key, rec[key])
+            //    }
+            //    i++;
+            //}
         }
 
     }
 
+    Component.onCompleted: {
+        records.clear();
+    }
 }

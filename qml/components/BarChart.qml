@@ -34,53 +34,6 @@ SilicaListView {
     //property string selectedBarLabel: ""
     property int ed: -1
 
-    signal barSelected(int barNr, real barValue, string barLabel)
-    signal barPressAndHold(int barNr, real barValue, string barLabel)
-    signal dataCleared()
-
-    function addData(val, clr, lbl, val2, clr2, val3, clr3, val4, clr4, vlbl) {
-        // {"barValue", "barColor", "barLabel", "group", "type"}
-        // type: 0 - filled, 1 - top only
-        var varMax, varMin, varClr, i;
-        i = listData.count;
-        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
-                                   varMin, varClr, lbl, vlbl);
-    }
-
-    function addDataVariance(val, clr, varMax, varMin, varClr, lbl, vlbl) {
-        // {"barValue", "barColor", "localMax", "localMin", "maxMinColor", "barLabel", "group"}
-        var val2, val3, val4, clr2, clr3, clr4, i;
-        //console.log("add " + val + ", " + varMax + ", " + varMin + ", " + varClr)
-        i = listData.count;
-        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
-                                   varMin, varClr, lbl, vlbl);
-    }
-
-    function clear(ind) {
-        if (ind === undefined) {
-            dataCleared();
-            return listData.clear();
-        }
-
-        if (ind >= 0 && ind < listData.count) {
-            return listData.remove(ind);
-        }
-
-        return -1;
-    }
-
-    function insertData(i, val, clr, lbl, val2, clr2, val3, clr3, val4, clr4, vlbl) {
-        var varMax, varMin, varClr;
-        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
-                                   varMin, varClr, lbl, vlbl);
-    }
-
-    function insertDataVariance(i, val, clr, varMax, varMin, varClr, lbl, vlbl) {
-        var val2, val3, val4, clr2, clr3, clr4;
-        return listData.insertData(i, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
-                                   varMin, varClr, lbl, vlbl);
-    }
-
     height: orientation === ListView.Horizontal ? 3*Theme.fontSizeMedium : 4*Theme.fontSizeMedium
     width: parent.width
 
@@ -120,9 +73,14 @@ SilicaListView {
         onClicked: {
             var i = barChartView.indexAt(mouseX+x,mouseY+y)
             barSelected(i, bValue, bLabel)
-            currentIndex = i
-            if (!showLabel)
+            if (showBarValue === 1 && currentIndex === i) {
+                currentIndex = -1
+            } else {
+                currentIndex = i
+            }
+            if (!showLabel) {
                 itemLabel.visible = !itemLabel.visible
+            }
         }
 
         onPressAndHold: {
@@ -317,7 +275,7 @@ SilicaListView {
         // {"barValue", "barColor", "barLabel", "group"} // type: 0 - filled, 1 - top only
         id: listData
 
-        function insertData(i, v1, c1, v2, c2, v3, c3, v4, c4, vMax, vMin, mmClr, lbl, vlbl) {
+        function insertData(i, se, v1, c1, v2, c2, v3, c3, v4, c4, vMax, vMin, mmClr, lbl, vlbl) {
             var clrStr, clr2Str, clr3Str, clr4Str, vClrStr;
             if (lbl === undefined)
                 lbl = "";
@@ -362,7 +320,7 @@ SilicaListView {
             else if (showVariance === 0 || showVariance === 1)
                 showVariance += 2;
             vClrStr = "" + mmClr;
-            insert(i, {"barValue": v1*1.0, "barColor": clrStr, "barLabel": lbl,
+            insert(i, {"group": se, "barValue": v1*1.0, "barColor": clrStr, "barLabel": lbl,
                        "bar2Value": v2*1.0, "bar2Color": clr2Str,
                        "bar3Value": v3*1.0, "bar3Color": clr3Str,
                        "bar4Value": v4*1.0, "bar4Color": clr4Str,
@@ -370,4 +328,52 @@ SilicaListView {
                        "maxMinColor": vClrStr, "valLabel": vlbl});
         }
     }
+
+    signal barSelected(int barNr, real barValue, string barLabel)
+    signal barPressAndHold(int barNr, real barValue, string barLabel)
+    signal dataCleared()
+
+    function addData(sct, val, clr, lbl, val2, clr2, val3, clr3, val4, clr4, vlbl) {
+        // {"barValue", "barColor", "barLabel", "group", "type"}
+        // type: 0 - filled, 1 - top only
+        var varMax, varMin, varClr, i;
+        i = listData.count;
+        return listData.insertData(i, sct, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
+    }
+
+    function addDataVariance(sct, val, clr, varMax, varMin, varClr, lbl, vlbl) {
+        // {"barValue", "barColor", "localMax", "localMin", "maxMinColor", "barLabel", "group"}
+        var val2, val3, val4, clr2, clr3, clr4, i;
+        //console.log("add " + val + ", " + varMax + ", " + varMin + ", " + varClr)
+        i = listData.count;
+        return listData.insertData(i, sct, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
+    }
+
+    function clear(ind) {
+        if (ind === undefined) {
+            dataCleared();
+            return listData.clear();
+        }
+
+        if (ind >= 0 && ind < listData.count) {
+            return listData.remove(ind);
+        }
+
+        return -1;
+    }
+
+    function insertData(i, sct, val, clr, lbl, val2, clr2, val3, clr3, val4, clr4, vlbl) {
+        var varMax, varMin, varClr;
+        return listData.insertData(i, sct, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
+    }
+
+    function insertDataVariance(i, sct, val, clr, varMax, varMin, varClr, lbl, vlbl) {
+        var val2, val3, val4, clr2, clr3, clr4;
+        return listData.insertData(i, sct, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
+                                   varMin, varClr, lbl, vlbl);
+    }
+
 }

@@ -29,28 +29,111 @@ Page {
                 width: parent.width - 2*x
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 plainText: qsTr("This app reads the contents of Oura Cloud. " +
-                                "API is described in https://cloud.ouraring.com/docs/.\n" +
+                                "API is described in %1.\n" +
                                 "The app cannot be used for reading the data from the ring," +
-                                "nor to upload the data to Oura Cloud.")
+                                "nor to upload the data to Oura Cloud.").arg("https://cloud.ouraring.com/docs/")
             }
 
             SectionHeader {
-                text: qsTr("Logs")
+                text: qsTr("sleep types")
             }
 
-            TextArea {
-                id: logList
-                width: parent.width
-                placeholderText: qsTr("No logs yet.")
-            }
-        }
-    }
+            Row {
+                width: parent.width - 2*x
+                x: Theme.horizontalPageMargin
+                spacing: Theme.paddingMedium
 
-    Component.onCompleted: {
-        var i = 0, N = DataB.appLog.length
-        while (i < N) {
-            logList.text += DataB.appLog[i] + "\n"
-            i++
+                Column { // deep
+                    width: (parent.width - 3*parent.spacing)/4
+                    Rectangle {
+                        width: parent.width
+                        height: Theme.fontSizeMedium
+                        color: Theme.highlightColor
+                    }
+                    Label {
+                        color: Theme.highlightColor
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("deep")
+                    }
+                }
+
+                Column { // light
+                    width: (parent.width - 3*parent.spacing)/4
+                    Rectangle {
+                        width: parent.width
+                        height: Theme.fontSizeMedium
+                        color: Theme.secondaryHighlightColor
+                    }
+                    Label {
+                        color: Theme.highlightColor
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("light")
+                    }
+                }
+
+                Column { // rem
+                    width: (parent.width - 3*parent.spacing)/4
+                    Rectangle {
+                        width: parent.width
+                        height: Theme.fontSizeMedium
+                        color: Theme.secondaryColor
+                    }
+                    Label {
+                        color: Theme.highlightColor
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("rem")
+                    }
+                }
+
+                Column { // awake
+                    width: (parent.width - 3*parent.spacing)/4
+                    Rectangle {
+                        width: parent.width
+                        height: Theme.fontSizeMedium
+                        color: Theme.primaryColor
+                    }
+                    Label {
+                        color: Theme.highlightColor
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("awake")
+                    }
+                }
+
+            }
+
+            Label {
+                color: Theme.highlightColor
+                text: qsTr("The value on a day summary column is the total sleeping time " +
+                           "without the awake periods.")
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2*x
+            }
+
+            SectionHeader {
+                text: qsTr("averages")
+            }
+
+            Label {
+                color: Theme.highlightColor
+                text: qsTr("The scores on the right hand side are average values of " +
+                           "365, 30 or 7 days. The latest half finished day is not " +
+                           "taken into account.")
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2*x
+            }
+
+            Label {
+                color: Theme.highlightColor
+                text: qsTr("The sign below the score tells whether the value of the latest " +
+                           "full day is larger than, smaller than, or equal to the average " +
+                           "of the week. The color changes if the difference is big.")
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2*x
+            }
+
         }
     }
 }
