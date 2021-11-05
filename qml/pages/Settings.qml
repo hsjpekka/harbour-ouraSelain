@@ -6,6 +6,22 @@ Page {
     id: page
 
     allowedOrientations: Orientation.All
+    Component.onCompleted: {
+        getUserData()
+        changeToken = false // tokenField.text is changed during set up
+        if (tokenField.text === "") {
+            tokenField.readOnly = false
+        }
+    }
+
+    Component.onDestruction: {
+        if (changeToken) {
+            token = tokenField.text
+            setToken(tokenField.text)
+        } else if (reloaded) {
+            //cloudReloaded(dateButton.firstDate)
+        }
+    }
 
     property bool changeToken: false
     property string token
@@ -71,7 +87,7 @@ Page {
                 onClicked: {
                     console.log("==== vaihtuu ==== " + token + ", " + tokenField.text)
                     ouraCloud.setPersonalAccessToken(tokenField.text)
-                    ouraCloud.refreshDownloads()
+                    ouraCloud.downloadOuraCloud("userinfo")
                 }
             }
 
@@ -102,6 +118,13 @@ Page {
 
             SectionHeader {
                 text: qsTr("Me")
+            }
+
+            Label {
+                x: Theme.horizontalPageMargin
+                color: Theme.secondaryHighlightColor
+                text: qsTr("refresh data from the pull down menu")
+                visible: changeToken
             }
 
             DetailItem {
@@ -155,6 +178,7 @@ Page {
                 placeholderText: qsTr("for example: %1").arg("A3EDG66YA...")
                 readOnly: true
                 text: token
+                labelVisible: true
                 label: readOnly? qsTr("press to change"): qsTr("token")
                 EnterKey.onClicked: {
                     focus = false
@@ -331,20 +355,6 @@ Page {
                     property bool ready: false
                 }
             }
-        }
-    }
-
-    Component.onCompleted: {
-        getUserData()
-        changeToken = false // resetting required due to getUserData()
-    }
-
-    Component.onDestruction: {
-        if (changeToken) {
-            token = tokenField.text
-            setToken(tokenField.text)
-        } else if (reloaded) {
-            //cloudReloaded(dateButton.firstDate)
         }
     }
 }

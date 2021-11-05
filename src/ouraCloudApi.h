@@ -18,7 +18,7 @@ public:
     Q_INVOKABLE double average(QString type, QString key, int days=7, int year1=0, int month1=0, int day1=0);
     Q_INVOKABLE bool dateAvailable(QString summaryType, QDate date);
     Q_INVOKABLE QDate dateChange(int step = -1);
-    Q_INVOKABLE void downloadOuraCloud();
+    Q_INVOKABLE void downloadOuraCloud(QString recordType="");
     Q_INVOKABLE int endHour(QString summaryType);
     Q_INVOKABLE int endHour(QString summaryType, QDate date);
     Q_INVOKABLE int endMinute(QString summaryType);

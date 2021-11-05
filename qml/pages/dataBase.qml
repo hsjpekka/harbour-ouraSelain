@@ -5,11 +5,15 @@ import "../components/"
 
 Page {
     id: page
+    Component.onCompleted: {
+        records.clear();
+    }
 
     // "index", "type", "record"
     property string pageTitle: qsTr("Database viewer")
+    property string selectedKey
 
-    ListModel {
+    ListModel { // {card, dataKey, dataValue}
         id: records
 
         ListElement {
@@ -18,8 +22,8 @@ Page {
             dataValue: ""
         }
 
-        function add(section, key, data) {
-            records.append({ "card": section + "", "dataKey": key + "", "dataValue": data + "" })
+        function add(sctn, key, data) {
+            records.append({ "card": sctn + "", "dataKey": key + "", "dataValue": data + "" })
         }
     }
 
@@ -98,19 +102,51 @@ Page {
     Component {
         id: dataFieldView
 
-        Item {
+        ListItem {
+            id: dataLabel
             width: page.width - 2*x
-            height: dataTxt.y + dataTxt.height
+            contentHeight: dataTxt.y + dataTxt.height
             x: Theme.horizontalPageMargin
+            onClicked: {
+                singleRow = !singleRow
+                selectedKey = dataKey //lblTxt
+                console.log("1-rivi " + singleRow + " valittu " + selectedKey)
+            }
+            onPressAndHold: {
+                selectedKey = dataKey //lblTxt
+                console.log("valittu " + selectedKey + " " + lblTxt)
+            }
+
+            menu: Component {
+                id: dbItemMenu
+                ContextMenu {
+                    MenuItem {
+                        text: qsTr("remove")
+                        onClicked: {
+                            console.log(" remove " + selectedKey)
+                            DataB.removeFromSettings(selectedKey)
+                            dataLabel.remove();
+                        }
+                    }
+                }
+            }
 
             property bool singleRow: true
             property string lblTxt: dataKey
             property string dbTxt: dataValue
+            property string recordType: card
+
+            function remove() {
+                remorseDelete(function () {
+                    records.remove(index);
+                });
+                return;
+            }
 
             Label {
                 id: lbl
                 width: parent.width
-                text: parent.lblTxt + " :"
+                text: dataKey + " :" //parent.lblTxt + " :"
                 color: Theme.secondaryHighlightColor
             }
 
@@ -121,17 +157,8 @@ Page {
                 width: parent.width - x
                 wrapMode: parent.singleRow ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere
                 truncationMode: TruncationMode.Fade
-                text: parent.dbTxt
+                text: dataValue //parent.dbTxt
             }
-
-            MouseArea {
-                anchors.fill: parent
-                propagateComposedEvents: true
-                onClicked: {
-                    parent.singleRow = !parent.singleRow
-                }
-            }
-
         }
     }
 
@@ -152,6 +179,12 @@ Page {
        width: parent.width
 
        PullDownMenu {
+           MenuItem {
+               text: qsTr("settings")
+               onClicked: {
+                   changeRecord("settings")
+               }
+           }
            MenuItem {
                text: qsTr("activity")
                onClicked: {
@@ -203,8 +236,9 @@ Page {
         var i=0, iN, rec, key, list, sect, table;
         emptyLabel.visible = false;
         records.clear();
+        pageTitle = recordType;
         if (recordType === "OuraCloud") {
-            rec = JSON.parse(oura.printInfo());
+            rec = JSON.parse(ouraCloud.printInfo());
             for (key in rec) {
                 records.add("User Info", key, rec[key]);
             }
@@ -267,6 +301,13 @@ Page {
                     i++;
                 }
             }
+        } else if (recordType === "settings") {
+            iN = DataB.settingsTable.length;
+            while (i < iN) {
+                records.add(i, DataB.settingsTable[i].key,
+                            DataB.settingsTable[i].value);
+                i++;
+            }
         } else {
             table = DataB.readCloudDb(recordType);
             iN = table.rows.length;
@@ -274,14 +315,14 @@ Page {
                 rec = table.rows[i];
                 for (key in rec) {
                     if (i === 0) {
-                        console.log(key + " :: " + rec[key]);
+                        console.log(key + " :: " + (rec[key] + "").slice(0, 30));
                     }
                     records.add(i, key, rec[key]);
                 }
                 i++;
-                if (i > 5) {
-                    i=iN+1;
-                }
+                //if (i > 5) {
+                //    i=iN+1;
+                //}
             }
 
             //iN = oura.numberOfRecords(recordType);
@@ -296,7 +337,4 @@ Page {
 
     }
 
-    Component.onCompleted: {
-        records.clear();
-    }
 }

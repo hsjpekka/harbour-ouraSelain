@@ -5,35 +5,6 @@ import Sailfish.Silica 1.0
 // addData(value, color, label, group, filling)
 SilicaListView {
     id: barChartView
-
-    property int    arrayType: 0 // 0 - stack, 1 - side by side
-    property int    barWidth: Theme.fontSizeMedium
-    property int    barType: 0 // 0 - column, 1 - line at value, 2 ...
-    property alias  chartData: listData
-    property color  labelColor: Theme.highlightColor
-    property real   labelFontSize: Theme.fontSizeExtraSmall
-    property real   labelWidth: Theme.fontSizeMedium*1.5
-    property int    minItemWidth: arrayType === 1? nrSets*barWidth : barWidth
-    property real   maxValue: height
-    property int    nrSets: 1
-    property color  sectionColor: Theme.highlightColor
-    property real   sectionFontSize: Theme.fontSizeExtraSmall
-    property var    sectionOrientation: orientation === ListView.Horizontal ? ListView.Vertical : ListView.Horizontal
-    property int    setCount: 1
-    property string set1Name: ""
-    property string set2Name: ""
-    property string set3Name: ""
-    property string set4Name: ""
-    property bool   setValueLabel: false
-    property int    showBarValue: 1 // 0 - no, 1 - when clicked, 2 - always
-    property int    showVariance: 0 // 0 - no, 1 - max, 2 - min,  3 - max and min -- only with a single set
-    property bool   showLabel: true
-    property bool   valueLabelOutside: false
-    property int    valueLabelMinY: labelFontSize + Theme.paddingSmall
-    //property real   selectedBarHeight: 0
-    //property string selectedBarLabel: ""
-    property int ed: -1
-
     height: orientation === ListView.Horizontal ? 3*Theme.fontSizeMedium : 4*Theme.fontSizeMedium
     width: parent.width
 
@@ -86,6 +57,7 @@ SilicaListView {
         onPressAndHold: {
             var i = barChartView.indexAt(mouseX+x,mouseY+y)
             barPressAndHold(i, bValue, bLabel)
+            mouse.accepted = false
         }
 
         Rectangle {
@@ -329,6 +301,34 @@ SilicaListView {
         }
     }
 
+    property int    arrayType: 0 // 0 - stack, 1 - side by side
+    property int    barWidth: Theme.fontSizeMedium
+    property int    barType: 0 // 0 - column, 1 - line at value, 2 ...
+    property alias  chartData: listData
+    property color  labelColor: Theme.highlightColor
+    property real   labelFontSize: Theme.fontSizeExtraSmall
+    property real   labelWidth: Theme.fontSizeMedium*1.5
+    property int    minItemWidth: arrayType === 1? nrSets*barWidth : barWidth
+    property real   maxValue: height
+    property int    nrSets: 1
+    property color  sectionColor: Theme.highlightColor
+    property real   sectionFontSize: Theme.fontSizeExtraSmall
+    property var    sectionOrientation: orientation === ListView.Horizontal ? ListView.Vertical : ListView.Horizontal
+    property int    setCount: 1
+    property string set1Name: ""
+    property string set2Name: ""
+    property string set3Name: ""
+    property string set4Name: ""
+    property bool   setValueLabel: false
+    property int    showBarValue: 1 // 0 - no, 1 - when clicked, 2 - always
+    property int    showVariance: 0 // 0 - no, 1 - max, 2 - min,  3 - max and min -- only with a single set
+    property bool   showLabel: true
+    property bool   valueLabelOutside: false
+    property int    valueLabelMinY: labelFontSize + Theme.paddingSmall
+    //property real   selectedBarHeight: 0
+    //property string selectedBarLabel: ""
+    property int ed: -1
+
     signal barSelected(int barNr, real barValue, string barLabel)
     signal barPressAndHold(int barNr, real barValue, string barLabel)
     signal dataCleared()
@@ -338,8 +338,8 @@ SilicaListView {
         // type: 0 - filled, 1 - top only
         var varMax, varMin, varClr, i;
         i = listData.count;
-        return listData.insertData(i, sct, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
-                                   varMin, varClr, lbl, vlbl);
+        return listData.insertData(i, sct, val, clr, val2, clr2, val3, clr3, val4, clr4,
+                                   varMax, varMin, varClr, lbl, vlbl);
     }
 
     function addDataVariance(sct, val, clr, varMax, varMin, varClr, lbl, vlbl) {

@@ -12,7 +12,7 @@
 # The name of your application
 TARGET = harbour-ouraselain
 
-VERSION = 0.1.0
+VERSION = 0.2.0
 
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
@@ -22,18 +22,23 @@ QT += network sql
 
 SOURCES += \
     src/harbour-ouraselain.cpp \
-    src/ouraapi.cpp
+    src/ouraCloudApi.cpp
 
 DISTFILES += \
     harbour-ouraselain.desktop \
     qml/harbour-ouraselain.qml \
     qml/components/BarChart.qml \
+    qml/components/HistoryChart.qml \
     qml/components/ModExpandingSection.qml \
+    qml/components/RecordFieldSelector.qml \
+    qml/components/TrendLabel.qml \
+    qml/components/TrendView.qml \
     qml/cover/CoverPage.qml \
     qml/pages/activityPage.qml \
-    qml/pages/FirstPage.qml \
+    qml/pages/chartSettings.qml \
+    qml/pages/dataBase.qml \
     qml/pages/Info.qml \
-    qml/pages/manualPage.qml \
+    qml/pages/MainPage.qml \
     qml/pages/readinessPage.qml \
     qml/pages/Settings.qml \
     qml/pages/sleepPage.qml \
@@ -56,4 +61,4 @@ CONFIG += sailfishapp_i18n
 TRANSLATIONS += translations/harbour-ouraselain-fi.ts
 
 HEADERS += \
-    src/ouraapi.h
+    src/ouraCloudApi.h

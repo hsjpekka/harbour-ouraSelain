@@ -8,6 +8,33 @@ var dbTable = "ouraCloud", keyYMDP = "ymdp", keyType = "type", keyRec = "record"
 var keyActivity = "activity", keyBedTime = "ideal_bedtimes", keyReadiness = "readiness";
 var keySleep = "sleep", keyUserInfo = "userInfo";
 var keyPeriod = "period_id", keyDate = "summary_date", keyDateBT = "date";
+var chartTypeSingle = "ctSingle", chartTypeMin = "ctMin", chartTypeMaxmin = "ctMaxmin",
+    chartTypeSleep = "ctSleepTypes";
+var keyChart1Table = "chart1Table", keyChart1Type = "chart1Type",
+    keyChart1Value1 = "chart1Value1", keyChart1High = "chart1High",
+    keyChart1Low = "chart1Low", keyChart1Value2 = "chart1Value2",
+    keyChart1Value3 = "chart1Value3", keyChart1Value4 = "chart1Value4",
+    keyChart1Max = "chart1Max", keyChart1Title = "chart1Title";
+var keyChart2Table = "chart2Table", keyChart2Type = "chart2Type",
+    keyChart2Value1 = "chart2Value1", keyChart2High = "chart2High",
+    keyChart2Low = "chart2Low", keyChart2Value2 = "chart2Value2",
+    keyChart2Value3 = "chart2Value3", keyChart2Value4 = "chart2Value4",
+    keyChart2Max = "chart2Max", keyChart2Title = "chart2Title";
+var keyChart3Table = "chart3Table", keyChart3Type = "chart3Type",
+    keyChart3Value1 = "chart3Value1", keyChart3High = "chart3High",
+    keyChart3Low = "chart3Low", keyChart3Value2 = "chart3Value2",
+    keyChart3Value3 = "chart3Value3", keyChart3Value4 = "chart3Value4",
+    keyChart3Max = "chart3Size", keyChart3Title = "chart3Title";
+var keyChart4Table = "chart4Table", keyChart4Type = "chart4Type",
+    keyChart4Value1 = "chart4Value1", keyChart4High = "chart4High",
+    keyChart4Low = "chart4Low", keyChart4Value2 = "chart4Value2",
+    keyChart4Value3 = "chart4Value3", keyChart4Value4 = "chart4Value4",
+    keyChart4Max = "chart4Size", keyChart4Title = "chart4Title";
+var keyChartTable = "chartTable", keyChartType = "chartType",
+    keyChartValue1 = "chartValue1", keyChartHigh = "chartHigh",
+    keyChartLow = "chartLow", keyChartValue2 = "chartValue2",
+    keyChartValue3 = "chart4Value3", keyChartValue4 = "chartValue4",
+    keyChartMax = "chartSize", keyChartTitle = "chartTitle";
 
 // tables in database:
 // 'ouraCloud'
@@ -39,14 +66,14 @@ function addCloudRecord(ind, type, str) {
 }
 
 function addToSettings(key, value, toDb) {
-
-    if(dbas === null) return;
-
-    if (toDb === undefined) {
-        toDb = true;
-    }
+    settingsTable.push({"key": key, "value": value});
 
     if (toDb) {
+        log("addToSettings: " + key + " " + value + " " + toDb)
+        if(dbas === null) {
+            log("addToSettings: database not opened!")
+            return;
+        }
         try {
             dbas.transaction(function(tx){
                 tx.executeSql("INSERT INTO settings (key, value)" +
@@ -58,12 +85,7 @@ function addToSettings(key, value, toDb) {
         }
     }
 
-    //readSettingsDb();
-
-    settingsTable.push({"key": key, "value": value });
-
     return;
-
 }
 
 function convertToYearMonthDate(dateStr) {
@@ -84,12 +106,15 @@ function convertToYearMonthDate(dateStr) {
 }
 
 function createTables() {
-    createTblCloud(); // oura cloud
+    var result = 0;
+    result += createTblCloud(); // oura cloud
+    //console.log("1. result = " + result)
     //createTblReadiness(); // oura cloud
-    createTblSettings(); // this app
+    result += createTblSettings(); // this app
+    //console.log("2. result = " + result)
     //createTblSleep(); // oura cloud
 
-    return;
+    return result;
 }
 
 function createTblCloud() {
@@ -111,9 +136,10 @@ function createTblCloud() {
         });
     } catch (err) {
         log("Error creating " + dbTable + "-table in database: " + err + "\n    " + query);
+        return -1;
     }
 
-    return;
+    return 0;
 }
 
 function createTblSettings() {
@@ -131,9 +157,10 @@ function createTblSettings() {
         });
     } catch (err) {
         log("Error creating settings-table in database: " + err + "\n    " + query);
+        return -1;
     };
 
-    return
+    return 0;
 }
 
 function findSetting(key) {
@@ -144,11 +171,16 @@ function findSetting(key) {
 
     N = settingsTable.length;
 
-    while (i<N) {
+    while (i < N) {
         if (settingsTable[i].key === key) {
             result = i;
             i = N;
         }
+        /*
+        if (i < N) {
+            console.log(settingsTable[i] + " = " + key + "? " + i + "/" + N + " - " + result)
+            console.log(N + " " + settingsTable[i].key + " = " + key + "? " + i + " - " + result)
+        } // */
         i++;
     }
 
@@ -156,7 +188,9 @@ function findSetting(key) {
 }
 
 function getSetting(key, defVal) {
-    var i=0, N=-1, result;
+    var i=0, result;
+
+    //console.log("haetaan asetus " + key + ", oletusarvo '" + defVal + "'")
 
     i = findSetting(key);
     if (i >= 0) {
@@ -165,6 +199,7 @@ function getSetting(key, defVal) {
         result = defVal;
     }
 
+    //console.log("löytyi kohdasta " + i + " tulos = '" + result + "'")
     return result;
 }
 
@@ -199,10 +234,12 @@ function modifyQuotes(str) {
     return str;
 }
 
-function readCloudDb(type, ymdp1, ymdp2, verbal) { // from date ymdp1 to ymdp2
+function readCloudDb(type, ymdp1, ymdp2, verbal) {
+    // reads records of type - all if type is undefined
+    //       records after date ymdp1 and/or before date ymdp2
     var i, iN, query, result, tbl, change;
 
-    console.log("" + type + " " + ymdp1 + " " + ymdp2 + " " + verbal)
+    log("readCloudDb: >" + ymdp1 + ", < " + ymdp2 + ", " + type)
 
     if (verbal === undefined) {
         verbal = true;
@@ -233,7 +270,7 @@ function readCloudDb(type, ymdp1, ymdp2, verbal) { // from date ymdp1 to ymdp2
         query += " WHERE " + keyType + "='" + type + "'";
     }
 
-    console.log(query)
+    //console.log(query)
 
     try {
         dbas.transaction(function(tx) {
@@ -295,7 +332,7 @@ function readSettingsDb() {
         N = -3;
     };
 
-    if (N === 0) {
+    if (N === 0) { // no errors
         i = 0;
         N = tbl.rows.length;
         while (i < N) {
@@ -304,24 +341,38 @@ function readSettingsDb() {
         }
     }
 
+    console.log("asetukset luettu, asetuksia " + N)
     return N;
 }
 
 function removeFromSettings(key) {
-    var mj = "DELETE settings WHERE key = '" + key + "'"
+    var i, mj, result = 0;
+    mj = "DELETE FROM settings WHERE key = '" + key + "'";
 
-    if(dbas === null) return -1;
-
-    try {
-        dbas.transaction(function(tx){
-            tx.executeSql(mj);
-        });
-    } catch (err) {
-        log("Error deleting from settings-table in database: " + err);
+    console.log(" " + mj)
+    if(dbas === null) {
         return -1;
-    };
+    } else {
+        try {
+            dbas.transaction(function(tx){
+                tx.executeSql(mj);
+            });
+        } catch (err) {
+            log("Error deleting from settings-table in database: " + err);
+            log("  -- " + mj + " -- ")
+            result = -1;
+        }
+    }
 
-    return 0;
+    i = findSetting(key);
+    if (i >= 0) {
+        settingsTable.splice(i, 1);
+    }
+    if (result === 0) {
+        result = i;
+    }
+
+    return result;
 }
 
 /*
@@ -342,6 +393,55 @@ function removeTableCloud() {
 }
 // */
 
+//*
+function storeCloudRecords(type, cloudRecord) {
+    //console.log("alkaa " + type + " :::: " + cloudRecord.splice(0, 20));
+    // cloudRecord = '{
+    // "sleep": [{"summary_date": "2016-10-11", ...}, {"summary_date": "2016-10-12", ...}, ...]
+    // }'
+    var jsonCloud = JSON.parse(cloudRecord);
+    var result = 0, i=0, iN; // 0 - onnistui, 1 - parseError
+    var records;
+    if (jsonCloud[keyActivity] !== undefined) {
+        console.log("_____store activity_____");
+        type = keyActivity;
+        records = jsonCloud[keyActivity];
+    } else if (jsonCloud[keyReadiness] !== undefined) {
+        console.log("_____store readiness_____");
+        type = keyReadiness;
+        records = jsonCloud[keyReadiness];
+    } else if (jsonCloud[keySleep] !== undefined) {
+        console.log("_____store sleep_____");
+        type = keySleep;
+        records = jsonCloud[keySleep];
+    } else if (jsonCloud[keyBedTime] !== undefined) {
+        console.log("_____store bedtime_____");
+        type = keyBedTime;
+        records = jsonCloud[keyBedTime];
+    } else if (type === keyUserInfo) {
+        console.log("_____store info_____");
+        records = jsonCloud;
+    } else {
+        log("____unknown record____\n" + cloudRecord.substring(0,60) + " ....")
+    }
+
+    // records = [{"summary_date": "2016-10-11", ...}, {"summary_date": "2016-10-12", ...}, ...]
+    if (Array.isArray(records)) {
+        iN = records.length;
+        for(i=0; i<iN; i++) {
+            //if (i===0) {
+                //console.log("i == " + i + " - " + JSON.stringify(records[i]).slice(0,28));
+            //}
+            storeRecord(type, records[i]);
+        }
+    } else {
+        console.log("_____object_____\n" + "  " + JSON.stringify(records).slice(0,28));
+        storeRecord(type, records);
+    }
+    return;
+}
+// */
+
 function storeRecord(type, jsonRecord) {
     // jsonRecord = {"summary_date": "2016-10-11", ...}
     var year=0, month=0, date=0, period=0, ymd, ind;
@@ -353,14 +453,16 @@ function storeRecord(type, jsonRecord) {
         dateKey = keyDateBT;
     }
 
-    if (jsonRecord[dateKey] === undefined) {
-        log("No " + dateKey + " in the " + type + "-record.");
-        return 1;
-    } else {
-        ymd = convertToYearMonthDate(jsonRecord[keyDate]);
-        year = ymd.year;
-        month = ymd.month;
-        date = ymd.date;
+    if (type !== keyUserInfo) {
+        if (jsonRecord[dateKey] === undefined) {
+            log("No " + dateKey + " in the " + type + "-record.");
+            return 1;
+        } else {
+            ymd = convertToYearMonthDate(jsonRecord[keyDate]);
+            year = ymd.year;
+            month = ymd.month;
+            date = ymd.date;
+        }
     }
 
     if (jsonRecord[keyPeriod] === undefined) {
@@ -415,54 +517,23 @@ function storeRecord(type, jsonRecord) {
     }
 }
 
-//*
-function storeCloudRecords(type, cloudRecord) {
-    //console.log("alkaa " + type + " :::: " + cloudRecord.splice(0, 20));
-    // cloudRecord = '{
-    // "sleep": [{"summary_date": "2016-10-11", ...}, {"summary_date": "2016-10-12", ...}, ...]
-    // }'
-    var jsonCloud = JSON.parse(cloudRecord);
-    var result = 0, i=0, iN; // 0 - onnistui, 1 - parseError
-    var records;
-    if (jsonCloud[keyActivity] !== undefined) {
-        console.log("_____store activity_____");
-        type = keyActivity;
-        records = jsonCloud[keyActivity];
-    } else if (jsonCloud[keyReadiness] !== undefined) {
-        console.log("_____store readiness_____");
-        type = keyReadiness;
-        records = jsonCloud[keyReadiness];
-    } else if (jsonCloud[keySleep] !== undefined) {
-        console.log("_____store sleep_____");
-        type = keySleep;
-        records = jsonCloud[keySleep];
-    } else if (jsonCloud[keyBedTime] !== undefined) {
-        console.log("_____store bedtime_____");
-        type = keyBedTime;
-        records = jsonCloud[keyBedTime];
-    } else if (type === keyUserInfo) {
-        console.log("_____store info_____");
-        records = jsonCloud;
-    } else {
-        log("____unknown record____\n" + cloudRecord.substring(0,60) + " ....")
+function storeSettings(key, value, toDb) {
+    var i, result;
+
+    if (toDb === undefined) {
+        toDb = true;
     }
 
-    // records = [{"summary_date": "2016-10-11", ...}, {"summary_date": "2016-10-12", ...}, ...]
-    if (Array.isArray(records)) {
-        iN = records.length;
-        for(i=0; i<iN; i++) {
-            //if (i===0) {
-                //console.log("i == " + i + " - " + JSON.stringify(records[i]).slice(0,28));
-            //}
-            storeRecord(type, records[i]);
-        }
+    i = findSetting(key);
+    console.log(i + ", " + key + ", " + value)
+    if (i >= 0) {
+        result = updateSettings(key, value, toDb);
     } else {
-        console.log("_____object_____\n" + "  " + JSON.stringify(records).slice(0,28));
-        storeRecord(type, records);
+        result = addToSettings(key, value, toDb);
     }
-    return;
+
+    return result;
 }
-// */
 
 function updateCloudRecord(ind, type, str) {
     var query, result;
@@ -483,19 +554,18 @@ function updateCloudRecord(ind, type, str) {
     return;
 }
 
-function updateSettings(key, value) {
-    var i, mj = "UPDATE settings SET value = '" + value + "' WHERE key = '" + value + "'"
+function updateSettings(key, value, toDb) {
+    var i, mj = "UPDATE settings SET value = '" + value + "' WHERE key = '" + key + "'"
     // tunnus string, arvo string
     if(dbas === null) return;
 
     i = findSetting(key);
-    if ( i < 0) {
-        log("update -> insert " + key + ", " + value)
-        return addToSettings(key, value);
-    } else {
+    if (i >= 0) {
         settingsTable[i].value = value;
+        console.log("päivitetään " + i + " " + settingsTable[i].key + " " + settingsTable[i].value + " " + value)
     }
 
+    console.log(mj)
     try {
         dbas.transaction(function(tx){
             tx.executeSql(mj);

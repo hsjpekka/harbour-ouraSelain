@@ -128,7 +128,7 @@ int ouraCloudApi::addRecord(ContentType content, QJsonValue newRec)
         arr->insert(0, newRec);
     }
 
-    qInfo() << dateNew << newYMDP << dateOld << oldYMDP << i;
+    //qInfo() << dateNew << newYMDP << dateOld << oldYMDP << i;
 
     return arr->count();
 }
@@ -208,7 +208,7 @@ double ouraCloudApi::averageReadiness(QString key, QDate date)
     N = readinessCount(date);
     i = iSummary(Readiness, date, 0);
     j = 0;
-    qInfo() << "alku " << key << date << "i=" << i << "N=" << N;
+    //qInfo() << "alku " << key << date << "i=" << i << "N=" << N;
 
     while (j < N) {
         jsonVal = valueReadiness(key, date, i);
@@ -263,8 +263,8 @@ double ouraCloudApi::averageSleep(QString key, QDate date)
         }
     }
 
-    qInfo() << "loppu averageSleep()" << date.toString("yyyy-MM-dd") << iSummary(Sleep, date, 0)
-            << key << result << N << "kok. aika" << totalTime << weightedAverages;
+    //qInfo() << "loppu averageSleep()" << date.toString("yyyy-MM-dd") << iSummary(Sleep, date, 0)
+    //        << key << result << N << "kok. aika" << totalTime << weightedAverages;
 
     return result;
 }
@@ -387,20 +387,37 @@ void ouraCloudApi::download(ContentType content)
     return;
 }
 
-void ouraCloudApi::downloadOuraCloud()
+void ouraCloudApi::downloadOuraCloud(QString recordType)
 {
+    ContentType type = TypeError;
     //iDownloads = 0;
     //downloadNext();
-    download(User);
-    isLoadingInfo = true;
-    download(Activity);
-    isLoadingActivity = true;
-    download(Readiness);
-    isLoadingReadiness = true;
-    download(Sleep);
-    isLoadingSleep = true;
-    download(BedTimes);
-    isLoadingBedTimes = true;
+    if (recordType != "") {
+        type = valueType(recordType);
+        download(type);
+        if (type == User) {
+            isLoadingInfo = true;
+        } else if (type == Activity) {
+            isLoadingActivity = true;
+        } else if (type == BedTimes) {
+            isLoadingBedTimes = true;
+        } else if (type == Readiness) {
+            isLoadingReadiness = true;
+        } else if (type == Sleep) {
+            isLoadingSleep = true;
+        }
+    } else {
+        download(User);
+        isLoadingInfo = true;
+        download(Activity);
+        isLoadingActivity = true;
+        download(Readiness);
+        isLoadingReadiness = true;
+        download(Sleep);
+        isLoadingSleep = true;
+        download(BedTimes);
+        isLoadingBedTimes = true;
+    }
     return;
 }
 
@@ -486,7 +503,7 @@ QDate ouraCloudApi::firstDate(int first) // the first or last date in the latest
         //str.append("sleep");
         date1 = date2;
     }
-    qInfo() << str << "valittu" << date1.toString(dateFormat);
+    //qInfo() << str << "valittu" << date1.toString(dateFormat);
     return date1;
 }
 
@@ -495,7 +512,7 @@ QDate ouraCloudApi::firstDateIn(ContentType type, int first) // the first or las
 
     QDate date1(0,0,0);
     int i, iN;
-    QString key;
+    //QString key;
     QJsonArray *list;
     QJsonObject locObj;
     QJsonValue locVal;
@@ -529,7 +546,7 @@ QDate ouraCloudApi::firstDateIn(ContentType type, int first) // the first or las
             i = 0;
         //qInfo() << "i" << i << "iN" << iN << "first" << first;
     }
-    qInfo() << "löytyy " + keyActivity;
+    //qInfo() << "löytyy " + keyActivity;
     date1 = dateAt(type, i);
 
     return date1;

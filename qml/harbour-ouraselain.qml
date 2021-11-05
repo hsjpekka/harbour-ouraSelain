@@ -9,8 +9,7 @@ import "pages"
 ApplicationWindow
 {
     id: applicationWindow
-    initialPage: Component {
-        FirstPage {
+    initialPage: Component { MainPage {
             onRefreshOuraCloud: downloadOuraCloud()
             onOpenSettings: setUpNow()
         }
@@ -18,28 +17,22 @@ ApplicationWindow
     cover: Qt.resolvedUrl("cover/CoverPage.qml")
     //allowedOrientations: defaultAllowedOrientations
     Component.onCompleted: {
-        var dateToShowFirst = new Date()
-        var extraDays = dateToShowFirst.getDay() - Scripts.firstDayOfWeek
-        var msDay = 24*60*60*1000
-        var fullWeeks = 9
-
-        if (extraDays < 0) { // week starts on Monday (to Saturday)
-            extraDays = extraDays + 7
+        var firstDateToRead
+        if (openDb() === 0) {
+            readSettings()
+            settingsReady()
+            firstDateToRead = setDatesToRead()
+            readOldRecords(firstDateToRead)
         }
-        dateToShowFirst = new Date(dateToShowFirst.getTime() - msDay*(fullWeeks*7 + extraDays))
-        console.log("" + new Date().getDay() + " - " + Scripts.firstDayOfWeek + "=" + extraDays
-                    + " " + dateToShowFirst.toDateString())
-        readDb(dateToShowFirst)
-        dateToShowFirst.setTime(dateToShowFirst.getTime() - msDay)
-        timerOldRecords.lastDate = dateToShowFirst
-
+        console.log("- - - - - \n" + " vanhat luettu \n" + "- - - - -")
         if (personalAccessToken > "") {
             downloadOuraCloud()
         } else {
             setUpNow()
         }
         startingUp = false
-        generalSettings()
+        //generalSettings()
+        console.log("- - - - - \n" + " alkukomennot tehty \n" + "- - - - -")
     }
 
     property var db: null
@@ -47,6 +40,7 @@ ApplicationWindow
     property bool startingUp: true
 
     signal storedDataRead()
+    signal settingsReady()
 
     Timer {
         id: timerOldRecords
@@ -104,33 +98,31 @@ ApplicationWindow
         return;
     }
 
-    function readDb(firstDateToRead) {
+    function openDb() {
+        var result = 0;
+
         if(db === null) {
             try {
                 db = LocalStorage.openDatabaseSync("oura", "0.1", "daily records", 10000);
             } catch (err) {
                 DataB.log("Error in opening the database: " + err);
-                return -1;
+                result = -1;
             };
         }
 
-        DataB.dbas = db;
-        DataB.createTables();
-        DataB.readSettingsDb();
-        personalAccessToken = DataB.getSetting(DataB.keyPersonalToken, "");
-        if (personalAccessToken > "") {
-            ouraCloud.setPersonalAccessToken(personalAccessToken);
+        if (result >= 0) {
+            DataB.dbas = db;
+            result = DataB.createTables();
         }
-        readOldRecords(firstDateToRead);
 
-        return;
+        return result;
     }
 
     function readOldRecords(firstDate, lastDate) {
-        // from firstDate to lastDate
-        var compare = "", i, notDefined, oldRecs, ymdp1, ymdp2;
+        // reads dates > firstDate and dates < lastDate
+        var compare = "", i, notDefined, oldRecs, ymdp1, ymdp2;        
 
-        console.log("first " + (firstDate? firstDate.toDateString() : "- ,") + ", last " +
+        DataB.log("readOldRecords: > " + (firstDate? firstDate.toDateString() : "-") + ", < " +
                     (lastDate? lastDate.toDateString() : "-"))
 
         if (firstDate === undefined) {
@@ -151,17 +143,43 @@ ApplicationWindow
         while (i < oldRecs.rows.length) {
             ouraCloud.storeOldRecords(oldRecs.rows[i][DataB.keyType], oldRecs.rows[i][DataB.keyRec]);
             i++;
-            if (i < 4 && i < oldRecs.rows.length) {
-                console.log(oldRecs.rows[i][DataB.keyType] + ": " +
-                            oldRecs.rows[i][DataB.keyRec].substring(0, 60))
-            }
         }
+        /*
         if (oldRecs.rows.length > 0) {
             console.log("ensimmäinen tallennettu " + ouraCloud.firstDate());
             console.log("viimeinen tallennettu " + ouraCloud.lastDate());
         }
+        // */
 
         return;
+    }
+
+    function readSettings() {
+        DataB.readSettingsDb();
+
+        personalAccessToken = DataB.getSetting(DataB.keyPersonalToken, "");
+        console.log("tunniste " + personalAccessToken)
+        if (personalAccessToken > "") {
+            ouraCloud.setPersonalAccessToken(personalAccessToken);
+        }
+
+        return;
+    }
+
+    function setDatesToRead() {
+        var dateToShowFirst = new Date()
+        var extraDays = dateToShowFirst.getDay() - Scripts.firstDayOfWeek
+        var msDay = 24*60*60*1000
+        var fullWeeks = 9
+
+        if (extraDays < 0) { // week starts on Monday (to Saturday)
+            extraDays = extraDays + 7
+        }
+        dateToShowFirst = new Date(dateToShowFirst.getTime() - msDay*(fullWeeks*7 + extraDays));
+        timerOldRecords.lastDate = new Date(dateToShowFirst.getTime() - msDay);
+
+        //console.log(" ensimmäinen ladattava päivä " + dateToShowFirst.toDateString());
+        return dateToShowFirst;
     }
 
     function setUpNow() {
@@ -169,20 +187,22 @@ ApplicationWindow
                                              "token": personalAccessToken
                                          });
         subPage.setToken.connect(function () {
-            var msg, newTkn = subPage.token
+            var msg, newTkn = subPage.token;
             if (newTkn === "") {
-                msg = qsTr("Clearing token!")
+                msg = qsTr("Clearing token!");
             } else {
-                msg = qsTr("Changing token to %1.").arg(newTkn)
+                msg = qsTr("Changing token to %1.").arg(newTkn);
             }
 
-            DataB.log("new token >>" + newTkn.slice(0, 8) + "... <<")
+            DataB.log("new token >>" + newTkn.slice(0, 8) + "... <<");
 
             remorse.execute(msg, function() {
-                DataB.updateSettings(DataB.keyPersonalToken, newTkn)
-                ouraCloud.setPersonalAccessToken(newTkn)
-                personalAccessToken = newTkn
-                downloadOuraCloud()
+                console.log("remorse alkaa")
+                DataB.storeSettings(DataB.keyPersonalToken, newTkn);
+                ouraCloud.setPersonalAccessToken(newTkn);
+                personalAccessToken = newTkn;
+                if (personalAccessToken > "")
+                    downloadOuraCloud();
             })
         });
 
@@ -190,14 +210,5 @@ ApplicationWindow
     }
 
     function generalSettings() {
-        console.log("ma 23.8. " + Scripts.weekNumber(new Date(2021, 7, 23, 1, 0, 0, 0).getTime()) +
-                    " " + Scripts.weekDay(new Date(2021, 7, 23, 1, 0, 0, 0).getTime()) +
-                    " ma 23.8. " + Scripts.weekNumber(new Date(2021, 7, 23, 0, 1, 0, 0).getTime()) +
-                    " " + Scripts.weekDay(new Date(2021, 7, 23, 0, 1, 0, 0).getTime()) +
-                    " ma 23.8. " + Scripts.weekNumber(new Date(2021, 7, 23, 0, 0, 1, 0).getTime()) +
-                    " " + Scripts.weekDay(new Date(2021, 7, 24, 0, 0, 1, 0).getTime()) +
-                    " __ " + new Date(2021, 7, 24, 0, 0, 0, 0).getDate() + " " +
-                    new Date(new Date(2021, 7, 24, 0, 0, 0, 0)).getDate() +
-                    " " + new Date().getTimezoneOffset() )
     }
 }

@@ -30,7 +30,7 @@ Page {
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 plainText: qsTr("This app reads the contents of Oura Cloud. " +
                                 "API is described in %1.\n" +
-                                "The app cannot be used for reading the data from the ring," +
+                                "The app cannot be used for reading the data from the ring, " +
                                 "nor to upload the data to Oura Cloud.").arg("https://cloud.ouraring.com/docs/")
             }
 

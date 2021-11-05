@@ -6,10 +6,15 @@ Item {
     id: root
     width: implicitWidth
     height: implicitHeight
-    implicitWidth: column.x + column.width
-    implicitHeight: column.height
+    implicitWidth: weekBar.x + weekBar.width //column.x + column.width
+    implicitHeight: yearBar.height > monthBar.height?
+                        (yearBar.height > weekBar.height?
+                             yearBar.height : weekBar.height) :
+                        (monthBar.height > weekBar.height?
+                             monthBar.height : weekBar.height) //column.height
 
-    property alias  text: title.text
+    //property alias  text: title.text
+    property string text
 
     property int    average: 0
     property int    averageMonth: 0
@@ -73,8 +78,12 @@ Item {
 
         MouseArea {
             anchors.fill: parent
+            propagateComposedEvents: true
             onClicked: {
                 yearValue.visible = !yearValue.visible
+            }
+            onPressAndHold: {
+                mouse.accepted = false
             }
         }
     }
@@ -167,6 +176,7 @@ Item {
         }
     }
 
+    /*
     Column {
         id: column
         anchors {
@@ -197,4 +207,5 @@ Item {
             visible: isValid
         }
     }
+    // */
 }
