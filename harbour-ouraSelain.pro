@@ -12,7 +12,7 @@
 # The name of your application
 TARGET = harbour-ouraselain
 
-VERSION = 0.2.0
+VERSION = 0.3.0
 
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
@@ -27,10 +27,13 @@ SOURCES += \
 DISTFILES += \
     harbour-ouraselain.desktop \
     qml/harbour-ouraselain.qml \
+    qml/components/ActivityList.qml \
     qml/components/BarChart.qml \
     qml/components/HistoryChart.qml \
     qml/components/ModExpandingSection.qml \
+    qml/components/ReadinessList.qml \
     qml/components/RecordFieldSelector.qml \
+    qml/components/SleepList.qml \
     qml/components/TrendLabel.qml \
     qml/components/TrendView.qml \
     qml/cover/CoverPage.qml \
