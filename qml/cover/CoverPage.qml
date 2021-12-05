@@ -36,15 +36,8 @@ CoverBackground {
         CoverAction {
             iconSource: "image://theme/icon-cover-next"
             onTriggered: {
-                console.log("  <painettiin> ")
                 nextPressed(currentChart)
             }
         }
-
-        /*
-        CoverAction {
-            iconSource: "image://theme/icon-cover-pause"
-        }
-        // */
     }
 }

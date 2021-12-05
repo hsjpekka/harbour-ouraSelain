@@ -8,11 +8,6 @@ Page {
     property int  periodId: 0
     property int  maxPeriod: 0
 
-    onStatusChanged: {
-        if (page.status === PageStatus.Active) {
-            DataB.log("readinessPage\n\n ")
-        }
-    }
     Component.onCompleted: {
         updateValues()
     }
@@ -69,7 +64,6 @@ Page {
                     var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
                                                     "date": summaryDate } )
                     dialog.accepted.connect( function() {
-                        //value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
                         value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
                         periodId = 0

@@ -40,7 +40,6 @@ ComboBox {
     }
 
     function checkIndex(str) {
-        //console.log("max " + str + "_" + activityModel.count + "." + readinessModel.count + "." + sleepModel.count)
         var i=0, ind=-1, model;
         if (record === DataB.keyActivity) {
             model = activityItemList;
@@ -58,7 +57,6 @@ ComboBox {
                 i++;
             }
         }
-        //console.log("max " + str + " " + ind)
 
         return ind;
     }

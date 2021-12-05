@@ -95,7 +95,6 @@ Page {
                     var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
                                                     "date": summaryDate } )
                     dialog.accepted.connect( function() {
-                        //value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
                         value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
                         ouraCloud.setDateConsidered(summaryDate)
@@ -301,10 +300,8 @@ Page {
                 onBarSelected: {
                     met1min.currentIndex = barNr*5
                     met1min.positionViewAtIndex(barNr*5, ListView.Center)
-                    //console.log("5min " + currentIndex + " " + barNr + ", 1min " + met1min.currentIndex)
                 }
 
-                //*
                 highlight: Item {
                     Rectangle {
                         width: met5min.barWidth < Theme.paddingSmall ? Theme.paddingSmall : met5min.barWidth
@@ -316,7 +313,6 @@ Page {
                 }
 
                 highlightFollowsCurrentItem: true
-                // */
 
                 property int centerAt: (16*60 - dayStart)/5
 
@@ -326,8 +322,6 @@ Page {
                     var i, j, c, clr;
                     var hour = ouraCloud.startHour(table);
                     var minute = ouraCloud.startMinute(table);
-
-                    //console.log("5min " + i + ", " + j + ", " + str.substring(i,j))
 
                     for (i=0, j=str.length; i<j; i++) {
                         c = str.charAt(i)*1.0;
@@ -393,7 +387,6 @@ Page {
                 onBarSelected: {
                     met5min.currentIndex = (barNr - barNr%5)/5
                     met5min.positionViewAtIndex((barNr - barNr%5)/5, ListView.Center)
-                    //console.log("1min " + currentIndex + ", 5min " + met5min.currentIndex)
                 }
 
                 highlight: Item {
@@ -417,9 +410,7 @@ Page {
                     var hour = ouraCloud.startHour(table);
                     var minute = ouraCloud.startMinute(table);
                     var max = 0;
-                    //var time = ouraCloud.value(table, "day_start", summaryDate), date0, h0, m0, t0;
                     str = str.substring(i, j).trim();
-                    //DataB.log(cell + " " + str);
 
                     arr = str.split(",");
                     arr.forEach(function(val, ind, ar) {
@@ -496,15 +487,12 @@ Page {
         if (dayStep === undefined)
             dayStep = -1;
         summaryDate = ouraCloud.dateChange(dayStep);
-        //console.log("on " + summaryDate.toDateString() + " p.o. " + tmpDate.toDateString() + " -1");
         txtDate.value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat);
         return;
     }
 
     function updateValues() {
-        //DataB.log("activity update 1: " + new Date().toTimeString().substring(0,8))
         validDate = ouraCloud.dateAvailable(DataB.keyActivity, summaryDate);
-        //console.log("ActivityPage - Löytyykö päivä " + summaryDate + "? " + validDate);
         met1min.chartData.clear();
         met5min.chartData.clear();
         if (validDate) {
@@ -538,11 +526,8 @@ Page {
             locals.metMediumPlus = ouraCloud.value(DataB.keyActivity, "met_min_medium_plus")
             locals.metHigh = ouraCloud.value(DataB.keyActivity, "met_min_high")
             locals.averageMet = ouraCloud.value(DataB.keyActivity, "average_met")
-            //DataB.log("activity update 2: " + new Date().toTimeString().substring(0,8) )
             met5min.fillData();
-            //DataB.log("activity update 3: " + new Date().toTimeString().substring(0,8) )
             met1min.fillData();
-            //DataB.log("activity update 4: " + new Date().toTimeString().substring(0,8) )
         }
     }
 

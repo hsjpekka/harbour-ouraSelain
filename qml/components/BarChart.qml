@@ -345,7 +345,7 @@ SilicaListView {
     function addDataVariance(sct, val, clr, varMax, varMin, varClr, lbl, vlbl) {
         // {"barValue", "barColor", "localMax", "localMin", "maxMinColor", "barLabel", "group"}
         var val2, val3, val4, clr2, clr3, clr4, i;
-        //console.log("add " + val + ", " + varMax + ", " + varMin + ", " + varClr)
+
         i = listData.count;
         return listData.insertData(i, sct, val, clr, val2, clr2, val3, clr3, val4, clr4, varMax,
                                    varMin, varClr, lbl, vlbl);

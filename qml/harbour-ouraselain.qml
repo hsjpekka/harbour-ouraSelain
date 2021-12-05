@@ -12,7 +12,7 @@ ApplicationWindow
     id: applicationWindow
     initialPage: mainPage
     cover: coverPage
-    //allowedOrientations: defaultAllowedOrientations
+    allowedOrientations: defaultAllowedOrientations
     Component.onCompleted: {
         var firstDateToRead
         if (openDb() === 0) {
@@ -23,15 +23,12 @@ ApplicationWindow
         }
         coverPage.currentChart = "ch1"
         coverPage.title = initialPage.chartTitle(coverPage.currentChart)
-        console.log("- - - - - \n" + " vanhat luettu \n" + "- - - - -")
         if (personalAccessToken > "") {
             downloadOuraCloud()
         } else {
             setUpNow()
         }
         startingUp = false
-        //generalSettings()
-        console.log("- - - - - \n" + " alkukomennot tehty \n" + "- - - - -")
     }
 
     signal storedDataRead()
@@ -53,7 +50,6 @@ ApplicationWindow
         id: coverPage
         currentChart: "ch1"
         onNextPressed: {
-            console.log("painettu " + chStr)
             if (chStr === "ch1") {
                 coverPage.currentChart = "ch2"
             } else if (chStr === "ch2") {
@@ -62,8 +58,6 @@ ApplicationWindow
                 coverPage.currentChart = "ch4"
             } else if (chStr === "ch4") {
                 coverPage.currentChart = "ch1"
-            } else {
-                console.log(" nykyinen " + chStr)
             }
             coverPage.title = initialPage.chartTitle(coverPage.currentChart)
             coverPage.value = initialPage.latestValue(coverPage.currentChart)
@@ -81,9 +75,6 @@ ApplicationWindow
             if (more >= 0) {
                 storedDataRead()
                 firstDateToRead = new Date(firstDateToRead.getTime() - daysToRead*msDay)
-                //date.setTime(firstDateToRead.getTime() - daysToRead*msDay)
-                //firstDateToRead.setTime(firstDateToRead.getTime() - daysToRead*msDay)// = date
-                //latestDateToRead.setTime(latestDateToRead.getTime() - daysToRead*msDay)//date.setTime(latestDateToRead.getTime() - daysToRead*msDay)
                 latestDateToRead = new Date(latestDateToRead.getTime() - daysToRead*msDay)
             } else {
                 repeat = false
@@ -97,23 +88,18 @@ ApplicationWindow
     Connections {
         target: ouraCloud
         onFinishedActivity: {
-            console.log("onFinishedActivity")
             DataB.storeCloudRecords(DataB.keyActivity, ouraCloud.printActivity())
         }
         onFinishedSleep: {
-            console.log("onFinishedSleep")
             DataB.storeCloudRecords(DataB.keySleep, ouraCloud.printSleep())
         }
         onFinishedReadiness: {
-            console.log("onFinishedReadiness")
             DataB.storeCloudRecords(DataB.keyReadiness, ouraCloud.printReadiness())
         }
         onFinishedBedTimes: {
-            console.log("onFinishedBedTimes")
             DataB.storeCloudRecords(DataB.keyBedTime, ouraCloud.printBedTimes())
         }
         onFinishedInfo: {
-            console.log("onFinishedInfo")
             DataB.storeCloudRecords(DataB.keyUserInfo, ouraCloud.printInfo())
         }
     }
@@ -135,7 +121,6 @@ ApplicationWindow
             ouraCloud.setStartDate(lastDate.getFullYear(), lastDate.getMonth()+1,
                                    lastDate.getDate());
         }
-        console.log("viimeisin aiemmin luettu päivä " + Scripts.dateString(lastDate) )
 
         ouraCloud.downloadOuraCloud();
         return;
@@ -184,20 +169,11 @@ ApplicationWindow
             ouraCloud.storeOldRecords(oldRecs.rows[i][DataB.keyType], oldRecs.rows[i][DataB.keyRec]);
             i++;
         }
-        /*
-        if (oldRecs.rows.length > 0) {
-            console.log("ensimmäinen tallennettu " + ouraCloud.firstDate());
-            console.log("viimeinen tallennettu " + ouraCloud.lastDate());
-        }
-        // */
         if (i === 0) {
             result = -1;
         } else {
             result = 0;
         }
-
-        DataB.log("readOldRecords: > " + (firstDate? firstDate.toDateString() : "-") + ", < " +
-                    (lastDate? lastDate.toDateString() : "-") + ", result = " + result)
 
         return result;
     }
@@ -206,7 +182,6 @@ ApplicationWindow
         DataB.readSettingsDb();
 
         personalAccessToken = DataB.getSetting(DataB.keyPersonalToken, "");
-        console.log("tunniste " + personalAccessToken)
         if (personalAccessToken > "") {
             ouraCloud.setPersonalAccessToken(personalAccessToken);
         }
@@ -217,7 +192,6 @@ ApplicationWindow
     function setDatesToRead() {
         var dateToShowFirst = new Date();
         var extraDays = dateToShowFirst.getDay() - Scripts.firstDayOfWeek;
-        //var fullWeeks = 9;
 
         if (extraDays < 0) { // week starts on Monday (to Saturday)
             extraDays = extraDays + Math.min(7, daysToRead);
@@ -226,7 +200,6 @@ ApplicationWindow
         timerOldRecords.latestDateToRead = new Date(dateToShowFirst.getTime() - msDay);
         timerOldRecords.firstDateToRead = new Date(dateToShowFirst.getTime() - daysToRead*msDay);
 
-        //console.log(" ensimmäinen ladattava päivä " + dateToShowFirst.toDateString());
         return dateToShowFirst;
     }
 
@@ -242,10 +215,7 @@ ApplicationWindow
                 msg = qsTr("Changing token to %1.").arg(newTkn);
             }
 
-            DataB.log("new token >>" + newTkn.slice(0, 8) + "... <<");
-
             remorse.execute(msg, function() {
-                console.log("remorse alkaa")
                 DataB.storeSettings(DataB.keyPersonalToken, newTkn);
                 ouraCloud.setPersonalAccessToken(newTkn);
                 personalAccessToken = newTkn;

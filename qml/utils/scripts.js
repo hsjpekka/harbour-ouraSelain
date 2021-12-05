@@ -116,11 +116,6 @@ function weekNumber(dateMs) {
     else
         wknow = Math.floor(diffMs/(7*dayMs)) + 1;
 
-    //if (iGloba < 15)
-    //    console.log("ma " + firstDayOfWeek + " 1.1. " + wkDay + " eka ma " +
-    //                wk1Start.getDate() + " wknow " + diffMs/(7*dayMs));
-    //iGloba++;
-
     return wknow;
 }
 

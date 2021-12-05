@@ -174,7 +174,6 @@ ListItem {
                     // and last equal to current date or the date of an empty list of records
                     first = ouraCloud.firstDate(table);
                     first.setTime(first.getTime() + 12*60*60*1000); // 12:00 to avoid problems between summer and winter
-                    console.log("eka " + first.toDateString() + " " + first.getHours() + ":" + first.getMinutes() + ":" + first.getSeconds() + "  " + first.getUTCHours())
                     if (first < firstDate) {
                         firstDate = first;
                     }
@@ -184,35 +183,20 @@ ListItem {
                     last = lastDate;
 
                     // trying to avoid long loops if the date format is wrong
-                    // poista kokeiluajan jälkeen
-                    if (firstDate.getFullYear() >= 2000) {
-                        diffMs = now.getTime() - lastDate.getTime();
-                        diffDays = Math.ceil(diffMs/dayMs);
-                    } else if (first.getFullYear() >= 0 && first.getFullYear() < 100) {
+                    if (first.getFullYear() < 100) {
                         first.setFullYear(first.getFullYear() + 2000);
                         last.setFullYear(last.getFullYear() + 2000);
-                        diffMs = now.getTime() - lastDate.getTime();
-                        diffDays = Math.ceil(diffMs/dayMs);
-                    } else {
-                        DataB.log("first date in " + table + "-data from year " +
-                                  firstDate.getFullYear())
-                        return;
                     }
+                    diffMs = now.getTime() - lastDate.getTime();
+                    diffDays = Math.ceil(diffMs/dayMs);
 
-                    console.log(chartId + " dDays " + diffDays + " " + chType)
                     for (i=0; i<diffDays; i++) {
-                        //console.log("______ " + chType + " " + col)
                         day = Scripts.dayStr(last.getDay());
                         sct = qsTr("%1, wk %2").arg(last.getFullYear()).arg(Scripts.weekNumber(last.getTime()));
 
                         if (chType === DataB.chartTypeSingle) {
                             val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, last));
 
-                            // ----
-                            if (i === diffDays-1 || i === 0) {
-                                console.log(" " + table + ", " + col + ", " + last.toDateString() + ": " + val1)
-                            }
-                            // ----
                             if (i === 1) {
                                 fullDayValue = val1 + "";
                             }
@@ -223,7 +207,6 @@ ListItem {
                             } else {
                                 addData(sct, val1, Theme.highlightColor, day);
                             }
-                            //console.log("single " + val1 + " i=" + i)
                         } else if (chType === DataB.chartTypeMin
                                    || chType === DataB.chartTypeMaxmin) {
                             val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, last));
@@ -243,7 +226,7 @@ ListItem {
                                                 (lowBar === 0? "transparent" : Theme.secondaryColor),
                                                 day);
                             }
-                            console.log("min/max " + val1 + "," + lowBar + " " + highBar + " i=" + i)
+
                             if (i === 1) {
                                 fullDayValue = val1 + "";
                             }
@@ -256,24 +239,17 @@ ListItem {
                                 chartData.set(i, {"barValue": val1, "bar2Value": val2,
                                               "bar3Value": val3, "bar4Value": val4, "valLabel":
                                                   Scripts.secToHM(val1 + val2 + val3) })
-                                console.log(" ______ ")
-                                console.log(" " + (val1 + val2 + val3) + " = " + Scripts.secToHM(val1 + val2 + val3))
-                                console.log(" ______ ")
                             } else {
                                 addData(sct, val1, "DarkGreen", day, val2, "Green", val3,
                                         "LightGreen", val4, "LightYellow",
                                         Scripts.secToHM(val1 + val2 + val3));
-                                console.log(" ______ ")
-                                console.log(" " + (val1 + val2 + val3) + " = " + Scripts.secToHM(val1 + val2 + val3))
-                                console.log(" ______ ")
                             }
                             if (i === 1) {
                                 fullDayValue = Scripts.secToHM(val1 + val2 + val3);
                             }
-                            //console.log("unityypit" + i)
                         } else {
                             if (i === 0) {
-                                log("unknown chart type " + chType + ", " + table)
+                                DataB.log("unknown chart type " + chType + ", " + table)
                             }
                         }
 
@@ -285,7 +261,6 @@ ListItem {
                     }
 
                     lastDate = last;
-                    console.log(chartId + " done " + i + " " + firstDate + " - " + lastDate);
 
                     loading = false;
                     positionViewAtEnd();
@@ -301,14 +276,11 @@ ListItem {
 
                     if (count === 0) {
                         last = new Date();
-                        console.log("ouraCloud.firstDate(" + table + ") " + first.toDateString());
                         if (first.getFullYear() < 10) {
                             first = last;
                         }
                         lastDate = last;
                     } else if (firstDate <= first) {
-                        console.log("ouraCloud.firstDate(" + table + ") " + first.toDateString()
-                                    + " " + firstDate.toDateString());
                         return;
                     } else {
                         last = firstDate;
@@ -317,8 +289,6 @@ ListItem {
 
                     diffMs = last.getTime() - first.getTime();
                     diffDays = Math.ceil(diffMs/dayMs);
-
-                    console.log("diffDays " + diffDays + " i " + i);
 
                     while (i< diffDays) {
                         sct = qsTr("%1, wk %2").arg(last.getFullYear()).arg(Scripts.weekNumber(last.getTime()));
@@ -351,17 +321,11 @@ ListItem {
                         }
 
                         i++;
-                        if (i === 30000) {
-                            console.log("30000 luuppia " + firstDate.toDateString());
-                        }
                         last.setTime(last.getTime() - dayMs);
                     }
                     last.setTime(last.getTime() + dayMs);
                     firstDate = last;
 
-                    //positionViewAtEnd();
-
-                    console.log("haettuja arvoja " + i);
                     return;
                 }
 
@@ -385,14 +349,10 @@ ListItem {
                 function fillData() {
                     var unit, val;
 
-                    // valueType = 0 vai 1?
-                    console.log(chartId + " " + chart.table + ", " + chart.col)
                     if (chart.chType === DataB.chartTypeSleep) {
                         val = "total";
-                        //summary.maxValue = 100;
                     } else {
                         val = chart.col
-                        //summary.maxValue = chart.maxValue;
                     }
                     if (chart.table === DataB.keyActivity) {
                         unit = activityMeasures.unit(val);
@@ -428,17 +388,14 @@ ListItem {
     }
 
     function fillData() {
-        console.log("  " + chType + ", " + chTable + ", " + chCol)
         return summary.fillData()
     }
 
     function newData() {
-        console.log("  " + chType + ", " + chTable + ", " + chCol)
         return chart.newData();
     }
 
     function oldData() {
-        console.log("  " + chType + ", " + chTable + ", " + chCol)
         return chart.oldData();
     }
 

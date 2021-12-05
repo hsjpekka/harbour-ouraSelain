@@ -69,39 +69,16 @@ Dialog {
                             }
                         }
                     }
-                    /*
-                    MenuItem {
-                        text: DataB.keyActivity
-                        onClicked: {
-                            _chartTable = DataB.keyActivity
-                        }
-                    }
-                    MenuItem {
-                        text: DataB.keyReadiness
-                        onClicked: {
-                            _chartTable = DataB.keyReadiness
-                        }
-                    }
-                    MenuItem {
-                        text: DataB.keySleep
-                        onClicked: {
-                            _chartTable = DataB.keySleep
-                        }
-                    }
-                    // */
                 }
 
                 function checkIndex(str) {
-                    console.log("tallenne " + str + " " + recordsModel.count)
                     var i=0, ind=-1;
                     while (i<recordsModel.count) {
                         if (str === recordsModel.get(i).value) {
                             ind = i;
                         }
-                        console.log(recordsModel.get(i).value + " " + str)
                         i++;
                     }
-                    console.log("tallenne " + str + " " + ind)
                     return ind;
                 }
             }
@@ -157,37 +134,9 @@ Dialog {
                             property string val: model.value
                         }
                     }
-                    /*
-                    MenuItem {
-                        text: qsTr("single column")
-                        onClicked: {
-                            _chartType = DataB.chartTypeSingle
-                        }
-                    }
-                    MenuItem {
-                        text: qsTr("column and cross bar")
-                        onClicked: {
-                            _chartType = DataB.chartTypeMin
-                        }
-                    }
-                    MenuItem {
-                        text: qsTr("column and cross bar")
-                        onClicked: {
-                            _chartType = DataB.chartTypeMin
-                        }
-                    }
-                    MenuItem {
-                        text: qsTr("sleep types")
-                        visible: _chartTable === DataB.keySleep
-                        onClicked: {
-                            _chartType = DataB.chartTypeSleep
-                        }
-                    }
-                    // */
                 }
 
                 function checkIndex(str) {
-                    console.log("kuvaaja " + str + " - " + typesModelA.count + "_" + typesModelB.count)
                     var i=0, ind=-1, model;
                     if (chartTable === "sleep") {
                         model = typesModelB
@@ -201,7 +150,7 @@ Dialog {
                         }
                         i++;
                     }
-                    console.log("kuvaaja " + str + " " + ind)
+
                     return ind;
                 }
             }

@@ -18,8 +18,6 @@ Page {
         if (changeToken) {
             token = tokenField.text
             setToken(tokenField.text)
-        } else if (reloaded) {
-            //cloudReloaded(dateButton.firstDate)
         }
     }
 
@@ -50,28 +48,23 @@ Page {
         onFinishedActivity: {
             activityReady.ready = true
             downloadLabel.visible = ouraCloud.isLoading()
-            console.log("activity luettu")
         }
         onFinishedSleep: {
             sleepReady.ready = true
             downloadLabel.visible = ouraCloud.isLoading()
-            console.log("sleep luettu")
         }
         onFinishedReadiness: {
             readinessReady.ready = true
             downloadLabel.visible = ouraCloud.isLoading()
-            console.log("readiness luettu")
         }
         onFinishedBedTimes: {
             bedtimesReady.ready = true
             downloadLabel.visible = ouraCloud.isLoading()
-            console.log("bedtimes luettu")
         }
         onFinishedInfo: {
             infoReady.ready = true
             downloadLabel.visible = ouraCloud.isLoading()
             getUserData()
-            console.log("info luettu")
         }
     }
 
@@ -85,7 +78,6 @@ Page {
             MenuItem {
                 text: qsTr("refresh data")
                 onClicked: {
-                    console.log("==== vaihtuu ==== " + token + ", " + tokenField.text)
                     ouraCloud.setPersonalAccessToken(tokenField.text)
                     ouraCloud.downloadOuraCloud("userinfo")
                 }
@@ -247,7 +239,6 @@ Page {
                     flickingArea.scrollToBottom()
 
                     reloaded = true
-                    //
                     cloudReloaded(dateButton.firstDate)
                 }
             }

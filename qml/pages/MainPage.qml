@@ -15,53 +15,38 @@ Page {
     Connections {
         target: ouraCloud
         onFinishedActivity: {
-            console.log("ouraCloud --- onFinishedActivity >>>")
             if (_reloaded) {
                 resetActivityData()
             } else {
                 fillActivityData()
             }
-            console.log("ouraCloud --- onFinishedActivity <<<")
         }
         onFinishedBedTimes: {
-            console.log("ouraCloud --- onFinishedBedTimes >>>")
             fillBedTimeData()
-            console.log("ouraCloud --- onFinishedBedTimes <<<")
         }
         onFinishedReadiness: {
-            console.log("ouraCloud --- onFinishedReadiness >>>")
             if (_reloaded) {
                 resetReadinessData()
             } else {
                 fillReadinessData()
             }
-            console.log("ouraCloud --- onFinishedReadiness <<<")
         }
         onFinishedSleep: {
-            console.log("ouraCloud --- onFinishedSleep >>>")
             if (_reloaded) {
                 resetSleepData()
             } else {
                 fillSleepData()
             }
-            console.log("ouraCloud --- onFinishedSleep <<<")
         }
     }
 
     Connections {
         target: applicationWindow
         onStoredDataRead: {
-            console.log("vanhat luettu ---> kuvaajien piirto")
-            //activityChart.oldData()
-            //sleepType.oldData()
-            //sleepHBR.oldData()
-            //readinessChart.oldData()
-            console.log("vanhat luettu ---> graph5")
             chart1.oldData()
             chart2.oldData()
             chart3.oldData()
             chart4.oldData()
-            console.log("vanhat luettu ---> kuvaajien piirto valmis")
         }
         onSettingsReady: {
             setUpPage()
@@ -78,7 +63,6 @@ Page {
                 text: qsTr("Activity")
                 onClicked: {
                     var showDate = ouraCloud.lastDate(DataB.keyActivity, 0)
-                    DataB.log("activity update 0: " + new Date().toTimeString().substring(0,8))
                     ouraCloud.setDateConsidered(showDate)
                     pageContainer.push(Qt.resolvedUrl("activityPage.qml"), {
                                            "summaryDate": showDate //
@@ -128,8 +112,6 @@ Page {
                             msg = qsTr("Changing token to %1.").arg(newTkn)
                         }
 
-                        DataB.log("new token >>" + newTkn.slice(0, 8) + "... <<")
-
                         remorse.execute(msg, function() {
                             DataB.updateSettings(DataB.keyPersonalToken, newTkn)
                             ouraCloud.setPersonalAccessToken(newTkn)
@@ -139,15 +121,6 @@ Page {
                     })
                     subPage.cloudReloaded.connect(function () {
                         _reloaded = true;
-                        //activityChart.clear();
-                        //sleepType.clear();
-                        //sleepHBR.clear();
-                        //readiness.clear();
-                        //activityChart.reset();
-                        //sleepType.reset();
-                        //sleepHBR.reset();
-                        //readiness.reset();
-                        // refresh charts, oura content changed
                     })
                 }
             }
@@ -188,7 +161,6 @@ Page {
                         var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
                                                         "date": summaryDate } )
                         dialog.accepted.connect( function() {
-                            //value = dialog.dateText
                             summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 11, 59, 59, 999)
                             activityTrend.fillData();
                             sleepTrend.fillData();
@@ -272,187 +244,6 @@ Page {
                 }
             }
 
-            /*
-            SectionHeader {
-                text: qsTr("active calories")
-            }
-
-            Row {
-                height: Theme.itemSizeHuge
-                spacing: Theme.paddingMedium
-                width: parent.width - 2*x
-                x: Theme.horizontalPageMargin
-
-                BarChart {
-                    id: activityChart
-                    height: parent.height
-                    width: parent.width - parent.spacing - chart1Summary.width
-                    orientation: ListView.Horizontal
-                    maxValue: 700
-                    valueLabelOutside: true
-
-                    BusyIndicator {
-                        anchors.centerIn: parent
-                        size: BusyIndicatorSize.Medium
-                        running: parent.loading
-                    }
-
-                    property date firstDate: _dateNow
-                    property date lastDate: _dateNow
-                    property string table: DataB.keyActivity
-                    property string chartColumn: "cal_active"
-                    property bool loading: true
-
-                    function newData() {
-                        // ignore data before lastDate
-                        // average over the day readiness periods
-                        var val, day, sct;
-                        var now = new Date(), dayMs = 24*60*60*1000;
-                        var first, last, diffMs, diffDays, i;
-
-                        if (ouraCloud.numberOfRecords(table) <= 0) {
-                            DataB.log("no " + table + "-data")
-                            return;
-                        }
-
-                        // set firstDate equal to the first date read from records
-                        // and last equal to current date or the date of an empty list of records
-                        first = ouraCloud.firstDate(table);
-                        console.log("eka " + first.toDateString() + " " + first.getHours() + ":" + first.getMinutes() + ":" + first.getSeconds() + "  " + first.getUTCHours())
-                        if (first < firstDate) {
-                            firstDate = first;
-                        }
-                        if (chartData.count === 0) {
-                            lastDate = first;
-                        }
-                        last = lastDate;
-
-                        // trying to avoid long loops if the date format is wrong
-                        if (firstDate.getFullYear() >= 2000) {
-                            diffMs = now.getTime() - lastDate.getTime();
-                            diffDays = Math.ceil(diffMs/dayMs);
-                        } else if (firstDate.getFullYear() >= 0 && firstDate.getFullYear() < 100) {
-                            var dum = new Date(2000,0,1).getTime() - new Date(1,0,1).getTime();
-                            diffMs = now.getTime() - (lastDate.getTime() + dum);
-                            diffDays = Math.ceil(diffMs/dayMs);
-                        } else {
-                            DataB.log("first date in " + table + "-data from year " +
-                                      firstDate.getFullYear())
-                            return;
-                        }
-
-                        DataB.log("activity chart " + firstDate.getDate() + "." + (firstDate.getMonth() + 1) + ". - " + ouraCloud.lastDate(table).getDate() + "." + (ouraCloud.lastDate(table).getMonth() + 1) + ". = " + diffDays)
-                        for (i=0; i<diffDays; i++) {
-                            val = Scripts.ouraToNumber(ouraCloud.value(table, chartColumn, last));
-
-                            if (i === 0 && count > 0) {
-                                chartData.set(i, {"barValue": val})
-                            } else {
-                                day = Scripts.dayStr(last.getDay());
-                                sct = qsTr("%1, wk %2").arg(last.getFullYear()).arg(Scripts.weekNumber(last.getTime()));
-                                addData(sct, val, Theme.highlightColor, day);
-                            }
-                            last.setTime(last.getTime() + dayMs);
-                        }
-
-                        if (i>0) {
-                            last.setTime(last.getTime() - dayMs);
-                        }
-
-                        lastDate = last;
-                        DataB.log("activity chart done " + i + " " + firstDate + " - " + lastDate);
-
-                        loading = false;
-                        positionViewAtEnd();
-
-                        return;
-                    }
-
-                    function oldData() {
-                        var val, diffMs, diffDays, sct;
-                        var first, last, dayMs = 24*60*60*1000, i=0;
-
-                        first = ouraCloud.firstDate(table);
-
-                        if (count === 0) {
-                            last = new Date();
-                            console.log("ouraCloud.firstDate(" + table + ") " + first.toDateString());
-                            if (first.getFullYear() < 10) {
-                                first = last;
-                            }
-                            lastDate = last;
-                        } else if (firstDate <= first) {
-                            console.log("ouraCloud.firstDate(" + table + ") " + first.toDateString()
-                                        + " " + firstDate.toDateString());
-                            return;
-                        } else {
-                            last = firstDate;
-                            last.setTime(last.getTime() - dayMs);
-                        }
-
-                        diffMs = last.getTime() - first.getTime();
-                        diffDays = Math.ceil(diffMs/dayMs);
-
-                        console.log("diffDays " + diffDays + " i " + i);
-
-                        while (i< diffDays) {
-                            val = Scripts.ouraToNumber(ouraCloud.value(table, chartColumn, last));
-                            sct = qsTr("%1, wk %2").arg(last.getFullYear()).arg(Scripts.weekNumber(last.getTime()));
-                            insertData(0, sct, val, Theme.highlightColor,
-                                       Scripts.dayStr(last.getDay()));
-
-                            i++;
-                            if (i === 30000) {
-                                console.log("30000 luuppia " + firstDate.toDateString());
-                            }
-                            last.setTime(last.getTime() - dayMs);
-                        }                        
-                        last.setTime(last.getTime() + dayMs);
-                        firstDate = last;
-
-                        positionViewAtEnd();
-
-                        console.log("haettuja arvoja " + i);
-                        return;
-                    }
-
-                    function reset() {
-                        chartData.clear();
-                        loading = true;
-                        oldData();
-                        loading = false;
-                        return;
-                    }
-                }
-
-                TrendView {
-                    id: chart1Summary
-                    //width: Theme.iconSizeLarge
-                    anchors.bottom: parent.bottom
-                    height: parent.height                    
-                    text: qsTr("score")
-                    factor: page.factor
-                    maxValue: activityChart.maxValue
-
-                    property string scoreStr: "score"
-
-                    function fillData() {
-                        var val;
-                        ouraCloud.setDateConsidered();
-                        averageWeek = ouraCloud.average(activityChart.table, activityChart.chartColumn, 7);
-                        averageMonth = ouraCloud.average(activityChart.table, activityChart.chartColumn, 30);
-                        averageYear = ouraCloud.average(activityChart.table, activityChart.chartColumn, 365);
-                        average = ouraCloud.average(activityChart.table, scoreStr); // defaults to previous 7 days
-                        val = ouraCloud.value(activityChart.table, scoreStr); // defaults to yesterday
-                        if (val === "-")
-                            isValid = false
-                        else
-                            score = val*1.0;
-                    }
-                }
-            }
-
-            // */
             HistoryChart {
                 id: chart1
                 onParametersChanged: {
@@ -630,10 +421,7 @@ Page {
     }
 
     function fillActivityData() {
-        console.log("....activity....")
         ouraCloud.setDateConsidered();
-        //activityChart.newData();
-        //chart1Summary.fillData();
         activityTrend.fillData();
         if (chart1.chTable === DataB.keyActivity) {
             chart1.newData();
@@ -660,13 +448,8 @@ Page {
     }
 
     function fillReadinessData() {
-        console.log("....readiness....")
         ouraCloud.setDateConsidered();
-        //readinessChart.newData();
-        //chart4Summary.fillData();
         readinessTrend.fillData();
-        //graph4.newData();
-        //graph4.fillData();
         if (chart1.chTable === DataB.keyReadiness) {
             chart1.newData();
             chart1.fillData();
@@ -687,15 +470,8 @@ Page {
     }
 
     function fillSleepData() {
-        console.log("....sleep....")
         ouraCloud.setDateConsidered();
-        //sleepType.newData();
-        //chart2Summary.fillData();
-        //sleepHBR.newData();
-        //chart3Summary.fillData();
         sleepTrend.fillData();
-        //graph2.fillData();
-        //graph2.newData();
         if (chart1.chTable === DataB.keySleep) {
             chart1.newData();
             chart1.fillData();
@@ -847,30 +623,6 @@ Page {
         chart2.setUpChart();
         chart3.setUpChart();
         chart4.setUpChart();
-        /*
-        readinessChart.table = DataB.getSetting(DataB.keyChart4Table, DataB.keyReadiness);
-        readinessChart.chartColumn = DataB.getSetting(DataB.keyChart4Value1, "score");
-        readinessChart.chartColumn2 = DataB.getSetting(DataB.keyChart4Value2, "");
-        readinessChart.chartColumn3 = DataB.getSetting(DataB.keyChart4Value3, "");
-        readinessChart.chartColumn4 = DataB.getSetting(DataB.keyChart4Value4, "");
-        readinessChart.chartHighBar = DataB.getSetting(DataB.keyChart4High, "");
-        readinessChart.chartLowBar = DataB.getSetting(DataB.keyChart4Low, "");
-        readinessChart.chartType = DataB.getSetting(DataB.keyChart4Type, DataB.chartTypeSingle);
-        title4.text = DataB.getSetting(DataB.keyChart4Title, "readiness");
-        // */
-
-        /*
-        graph5.chType = DataB.getSetting(graph5.chartId + DataB.keyChartType, DataB.chartTypeSingle);
-        graph5.chTable = DataB.getSetting(graph5.chartId + DataB.keyChartTable, DataB.keyReadiness);
-        graph5.chCol = DataB.getSetting(graph5.chartId + DataB.keyChartValue1, "score");
-        graph5.chCol2 = DataB.getSetting(graph5.chartId + DataB.keyChartValue2, "");
-        graph5.chCol3 = DataB.getSetting(graph5.chartId + DataB.keyChartValue3, "");
-        graph5.chCol4 = DataB.getSetting(graph5.chartId + DataB.keyChartValue4, "");
-        graph5.chHigh = DataB.getSetting(graph5.chartId + DataB.keyChartHigh, "");
-        graph5.chLow = DataB.getSetting(graph5.chartId + DataB.keyChartLow, "");
-        graph5.heading = DataB.getSetting(graph5.chartId + DataB.keyChartTitle, "readiness");
-        // */
-
         return;
     }
 

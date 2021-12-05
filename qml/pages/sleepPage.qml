@@ -87,7 +87,6 @@ Page {
                     var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
                                                     "date": summaryDate } )
                     dialog.accepted.connect( function() {
-                        //value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
                         value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
                         ouraCloud.setDateConsidered(summaryDate)
@@ -289,7 +288,6 @@ Page {
                 property int  barTargetWidth: sleepType.count > 0 ?
                                                   (width/sleepType.count).toFixed(0) : 20
                 property int  minBarWidth: 3
-                //property bool twoRows: width < sleepType.count*minBarWidth
 
                 function fillData() {
                     var table = DataB.keySleep, cell = "hypnogram_5min";
@@ -301,7 +299,6 @@ Page {
                     //"hypnogram_5min": "443432222211222333321112222222222111133333322221112233333333332232222334",
                     // '4 = '1' = deep (N3) sleep - '2' = light (N1 or N2) sleep - '3' = REM sleep - '4' = awake
                     j=str.length;
-                    //console.log("5min, " + i + ", " + j + ", " + str.substring(i,j))
                     for (i=0; i<j; i++) {
                         c = str.charAt(i)*1.0;
                         if (c >= 0 && c <= 9) {
@@ -317,7 +314,6 @@ Page {
                                 c = 1;
                                 clr = Theme.primaryColor;
                             }
-                            //console.log("lisää " + c + ", " + clr + ", " + printTime(hour, minute))
                             if (i === 0 || i === j-1 || (i > 10 && i < j-10 && minute < dMin))
                                 lbl = printTime(hour, minute)
                             else
@@ -384,8 +380,6 @@ Page {
                     var minute = ouraCloud.startMinute(table);
 
                     //"hr_5min": [0, 53, 51, 0, 50, 50, 49, 49, 50, 50, 51, 52, 52, 51, 53, 58, 60, 60, 59, 58, 58, 58, 58, 55, 55, 55, 55, 56, 56, 55, 53, 53, 53, 53, 53, 53, 57, 58, 60, 60, 59, 57, 59, 58, 56, 56, 56, 56, 55, 55, 56, 56, 57, 58, 55, 56, 57, 60, 58, 58, 59, 57, 54, 54, 53, 52, 52, 55, 53, 54, 56, 0],
-                    //console.log("5min " + i + ", " + j + str.substring(i,j))
-
                     if (str.indexOf("[") >= 0) {
                         str = str.substring(str.indexOf("[")+1,
                                             Math.max(str.indexOf("]"), str.length) )
@@ -465,7 +459,6 @@ Page {
                     var minute = ouraCloud.startMinute(table);
 
                     //"rmssd_5min": [0, 0, 62, 0, 75, 52, 56, 56, 64, 57, 55, 78, 77, 83, 70, 35, 21, 25, 49, 44, 48, 48, 62, 69, 66, 64, 79, 59, 67, 66, 70, 63, 53, 57, 53, 57, 38, 26, 18, 24, 30, 35, 36, 46, 53, 59, 50, 50, 53, 53, 57, 52, 41, 37, 49, 47, 48, 35, 32, 34, 52, 57, 62, 57, 70, 81, 81, 65, 69, 72, 64, 0]
-                    //console.log("5min " + i + ", " + j + str.substring(i,j))
                     if (str.indexOf("[") >= 0) {
                         str = str.substring(str.indexOf("[")+1,
                                             Math.max(str.indexOf("]"), str.length) )
@@ -554,30 +547,19 @@ Page {
     }
 
     function previousDay(dayStep) {
-        //var tmpDate = new Date(summaryDate.getFullYear(), summaryDate.getMonth(), summaryDate.getDate(), 7, 48, 52, 74);
-        //var ms = summaryDate.getTime();
         if (dayStep === undefined)
             dayStep = -1;
-        //ms += dayStep*24*60*60*1000;
-        //summaryDate = new Date(ms);
-        //tmpDate.setTime(ms);
-        //summaryDate = tmpDate;
         summaryDate = ouraCloud.dateChange(dayStep);
-        //console.log("on " + summaryDate.toDateString() + " p.o. " + tmpDate.toDateString() + " -1");
         txtDate.value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat);
         return;
     }
 
     function updateValues() {
-        DataB.log("sleep update 1: " + new Date().toTimeString().substring(0,8) )
-        //startTime.value = printTime(ouraCloud.startHour(DataB.keySleep), ouraCloud.startMinute(DataB.keySleep))
         validDate = ouraCloud.dateAvailable(DataB.keySleep, summaryDate);
         sleepType.chartData.clear();
         hr5min.chartData.clear();
         var5min.chartData.clear();
         if (validDate) {
-            //startTime.text = printTime(ouraCloud.startHour(DataB.keySleep), ouraCloud.startMinute(DataB.keySleep));
-            //endTime.text = printTime(ouraCloud.endHour(DataB.keySleep), ouraCloud.endMinute(DataB.keySleep));
             scoreSleep.value = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score"), 0);
             locals.timeScore = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_total"), 0);
             locals.disturbances = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "score_disturbances"), 0);
@@ -593,7 +575,6 @@ Page {
             locals.remTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "rem"), 0)/3600;
             locals.deepTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "deep"), 0)/3600;
             locals.latencyTime = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "onset_latency"), 0)/60;
-            //console.log(ouraCloud.value(DataB.keySleep, "midpoint_time") + " keskipiste <<<<<<<<<<<")
             locals.midpoint = printTime(ouraCloud.startHour(DataB.keySleep), ouraCloud.startMinute(DataB.keySleep),
                                            0, ouraCloud.value(DataB.keySleep, "midpoint_time")/60);
             locals.restless = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "restless"), 0);
@@ -603,24 +584,11 @@ Page {
             locals.hrVariation = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "rmssd"), 0);
             locals.breath = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "breath_average"), 0);
             locals.dT = Scripts.ouraToNumber(ouraCloud.value(DataB.keySleep, "temperature_delta"), 0);
-            DataB.log("sleep update 2: " + new Date().toTimeString().substring(0,8) )
             sleepType.fillData();
-            DataB.log("sleep update 3: " + new Date().toTimeString().substring(0,8) )
             hr5min.fillData();
-            DataB.log("sleep update 4: " + new Date().toTimeString().substring(0,8) )
             var5min.fillData();
-            DataB.log("sleep update 5: " + new Date().toTimeString().substring(0,8) )
-        } else {
-            //startTime.text = "--:--";
-            //endTime.text = "--:--";
-            //timeRestless.value = "-";
-            //timeEfficiency.value = "-";
-            //hrMin.value = "-";
-            //hrAve.value = "-";
-            //hrVariation.value = "-";
-            //breath.value = "-";
-            //temperature.value = "-";
         }
+
         return;
     }
 

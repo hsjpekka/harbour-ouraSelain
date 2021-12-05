@@ -12,46 +12,20 @@ Item {
     implicitHeight: layout === layRow? title.height:
                                        layout === layCol? title.height + valStr.height + icon.width + 2*_vgap :
                                            title.height + valStr.height + _vgap
-    /*
-    Component.onCompleted: {
-        console.log("leveydet: otsikko " + title.width + " arvo " + valStr.width + " x " + valStr.x + " merkki " + icon.width)
-    } //*/
 
     property alias  text: title.text
 
     property int    average: 0
-    //property int    averageMonth: 0
-    //property int    averageWeek: 0
-    //property int    averageYear: 0
-    //property color  barHugeColor: Theme.highlightColor
-    //property color  barNormalColor: Theme.secondaryHighlightColor
-    //property color  barSmallColor: Theme.secondaryColor
-    //property int    barWidth: Theme.fontSizeSmall
     property real   factor: 1.2
     property int    fontSize: Theme.fontSizeSmall
     property bool   isValid: true
-    //property int    labelFontSize: Theme.fontSizeExtraSmall
-    //property int    maxValue: 1
-    //property int    valueType: 0 // 0 - value, 1 - time
-    //property int    precision: 1
     property int    score: 0
     property string layout: layCompact
     readonly property string layCol: "column"
     readonly property string layRow: "row"
     readonly property string layCompact: "compact"
-    //property real   _scale: (height - yearLabel.height - _vgap)/maxValue
     property int    _vgap: Theme.paddingSmall
     property int    _hgap: Theme.paddingMedium
-
-    //onAverageYearChanged: {
-        //yearValue.labelTxt = Scripts.secToHM(averageYear)
-    //}
-    /*
-    onScoreChanged: {
-        console.log("=======================")
-        console.log("leveydet: " + text + " " + title.width + " arvo " + valStr.width + " x " + valStr.x + " merkki " + icon.width)
-        console.log("=======================")
-    } // */
 
     Label {
         id: title
@@ -82,7 +56,6 @@ Item {
         rotation: score > average? 180 : 0
         color: (score > average*factor || score < average/factor) ?
                    Theme.primaryColor : Theme.highlightColor
-        //anchors.horizontalCenter: parent.horizontalCenter
         visible: isValid
         x: layout === layCol? title.x + 0.5*(title.width - width) :
                                     valStr.x + valStr.width + _hgap + 0.5*width

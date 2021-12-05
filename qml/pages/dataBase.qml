@@ -29,78 +29,6 @@ Page {
         }
     }
 
-    /*
-    ListModel {
-        id: recordsActivity
-
-        ListElement {
-            index: ""
-            type: ""
-            record: ""
-        }
-
-        function add(ind, category, data) {
-            recordsInfo.append({ "index": ind, "type": category, "record": data })
-        }
-    }
-
-    ListModel {
-        id: recordsBedtimes
-
-        ListElement {
-            index: ""
-            type: ""
-            record: ""
-        }
-
-        function add(ind, category, data) {
-            recordsInfo.append({ "index": ind, "type": category, "record": data })
-        }
-    }
-
-    ListModel {
-        id: recordsReadiness
-
-        ListElement {
-            index: ""
-            type: ""
-            record: ""
-        }
-
-        function add(ind, category, data) {
-            recordsInfo.append({ "index": ind, "type": category, "record": data })
-        }
-    }
-
-    ListModel {
-        id: recordsSleep
-
-        ListElement {
-            index: ""
-            type: ""
-            record: ""
-        }
-
-        function add(ind, category, data) {
-            recordsInfo.append({ "index": ind, "type": category, "record": data })
-        }
-    }
-
-    ListModel {
-        id: ouraRespond
-
-        ListElement {
-            index: ""
-            type: ""
-            record: ""
-        }
-
-        function add(ind, category, data) {
-            recordsInfo.append({ "index": ind, "type": category, "record": data })
-        }
-    }
-    // */
-
     Component {
         id: dataFieldView
 
@@ -112,7 +40,6 @@ Page {
             onClicked: {
                 singleRow = !singleRow
                 selectedKey = dataKey //lblTxt
-                console.log("1-rivi " + singleRow + " valittu " + selectedKey)
                 if (singleRow) {
                     dataTxt.wrapMode = Text.NoWrap
                 } else {
@@ -121,7 +48,6 @@ Page {
             }
             onPressAndHold: {
                 selectedKey = dataKey //lblTxt
-                console.log("valittu " + selectedKey + " " + lblTxt)
             }
 
             menu: Component {
@@ -130,7 +56,6 @@ Page {
                     MenuItem {
                         text: qsTr("remove")
                         onClicked: {
-                            console.log(" remove " + selectedKey)
                             DataB.removeFromSettings(selectedKey)
                             dataLabel.remove();
                         }
@@ -322,27 +247,12 @@ Page {
             while( i < iN) {
                 rec = table.rows[i];
                 for (key in rec) {
-                    if (i === 0) {
-                        console.log(key + " :: " + (rec[key] + "").slice(0, 30));
-                    }
                     records.add(i, key, rec[key]);
                 }
                 i++;
-                //if (i > 5) {
-                //    i=iN+1;
-                //}
             }
-
-            //iN = oura.numberOfRecords(recordType);
-            //while (i < iN) {
-            //    rec = oura.recordNr(recordType, i);
-            //    for (key in rec) {
-            //        records.add(i, key, rec[key])
-            //    }
-            //    i++;
-            //}
         }
 
+        return;
     }
-
 }

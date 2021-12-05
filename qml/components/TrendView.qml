@@ -13,7 +13,6 @@ Item {
                         (monthBar.height > weekBar.height?
                              monthBar.height : weekBar.height) //column.height
 
-    //property alias  text: title.text
     property string text
 
     property int    average: 0
@@ -30,7 +29,6 @@ Item {
     property int    labelFontSize: Theme.fontSizeExtraSmall
     property int    maxValue: 1
     property int    valueType: 0 // 0 - value, 1 - secToHM, 2 - minToHM
-    //property int    precision: 1
     property int    score: 0
     property real   _scale: (height - yearLabel.height - _vgap)/maxValue
     property int    _vgap: Theme.paddingSmall
@@ -211,37 +209,4 @@ Item {
             }
         }
     }
-
-    /*
-    Column {
-        id: column
-        anchors {
-            left: weekBar.right
-            leftMargin: Theme.paddingSmall
-        }
-
-        Label {
-            id: title
-            text: qsTr("score")
-            color: Theme.secondaryHighlightColor
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-
-        Label {
-            text: isValid? score : "-"
-            color: Theme.highlightColor
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-
-        Icon {
-            source: score === average? "image://theme/icon-s-asterisk" :
-                                       "image://theme/icon-s-arrow"
-            rotation: score > average? 180 : 0
-            color: (score > average*factor || score < average/factor) ?
-                       Theme.primaryColor : Theme.highlightColor
-            anchors.horizontalCenter: parent.horizontalCenter
-            visible: isValid
-        }
-    }
-    // */
 }
