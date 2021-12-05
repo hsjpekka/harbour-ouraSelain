@@ -9,9 +9,9 @@ Item {
     implicitWidth: layout === layRow? title.width + valStr.width + icon.width + 2*_hgap :
                         layout === layCol? (title.width > valStr.width? title.width : valStr.width) :
                             title.width > (valStr.width + _hgap + icon.width)? title.width : valStr.width + _hgap + icon.width
-    implicitHeight: layout === layRow? Math.max(title.height, valStr.height):
-                                       layout === layCol? (title.width > valStr.width? title.width : valStr.width) :
-                                           title.width > (valStr.width + _hgap + icon.width)? title.width : valStr.width + _hgap + icon.width
+    implicitHeight: layout === layRow? title.height:
+                                       layout === layCol? title.height + valStr.height + icon.width + 2*_vgap :
+                                           title.height + valStr.height + _vgap
     /*
     Component.onCompleted: {
         console.log("leveydet: otsikko " + title.width + " arvo " + valStr.width + " x " + valStr.x + " merkki " + icon.width)

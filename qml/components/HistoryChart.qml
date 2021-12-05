@@ -11,7 +11,6 @@ ListItem {
     menu: itemMenu
 
     property alias chartHeight: chart.height
-    property string chartId: ""
     property alias chCol: chart.col
     property alias chCol2: chart.col2
     property alias chCol3: chart.col3
@@ -23,61 +22,15 @@ ListItem {
     property alias currentIndex: chart.currentIndex
     property alias factor: summary.factor
     property alias firstDate: chart.firstDate
-    property alias lastDate: chart.lastDate
     property alias heading: title.text
+    property alias lastDate: chart.lastDate
+    property alias latestValue: chart.fullDayValue
     property alias maxValue: chart.maxValue
     property alias setValueLabel: chart.setValueLabel
+    property alias valuesList: chart.model
 
     signal parametersChanged()
     signal barSelected(int barNr)
-
-    function valuesModified(tb0, typ0, val0, low0, hgh0,
-                          tb1, typ1, val1, low1, hgh1) {
-        var result = false;
-        if (tb1 === undefined || typ1 === undefined || val1 === undefined) {
-            result = false;
-        } else if (tb0 !== tb1 || typ0 !== typ1) {
-            result = true;
-        } else if (typ1 === DataB.chartTypeSleep) {
-            result = false;
-        } else if (val0 !== val1) {
-            result = true;
-        } else if (typ1 === DataB.chartTypeMin && low0 !== low1) {
-            result = true;
-        } else if (typ1 === DataB.chartTypeMaxmin &&
-                   (low0 !== low1 || hgh0 !== hgh1)) {
-            result = true;
-        }
-        return result;
-    }
-
-    function fillData() {
-        console.log(chartId + ": " + chType + ", " + chTable + ", " + chCol)
-        return summary.fillData()
-    }
-
-    function newData() {
-        console.log(chartId + ": " + chType + ", " + chTable + ", " + chCol)
-        return chart.newData();
-    }
-
-    function oldData() {
-        console.log(chartId + ": " + chType + ", " + chTable + ", " + chCol)
-        return chart.oldData();
-    }
-
-    function positionViewAtIndex(barNr, position) {
-        return chart.positionViewAtIndex(barNr, position);
-    }
-
-    function reset() {
-        summary.fillData();
-        return chart.reset();
-    }
-
-    function rescale(oldMax, newMax) {
-        return chart.reScale(oldMax, newMax);
-    }
 
     ContextMenu {
         id: itemMenu
@@ -87,6 +40,7 @@ ListItem {
                 var dialog = pageContainer.push(
                             Qt.resolvedUrl("../pages/chartSettings.qml"), {
                                 "chartTable": chart.table,
+                                "chartTitle": title.text,
                                 "chartType": chart.chType,
                                 "chartValue1": chart.col,
                                 "chartValue2": chart.col2,
@@ -98,9 +52,10 @@ ListItem {
                             })
                 dialog.accepted.connect(function () {
                     if (dialog.chartTable !== undefined && dialog.chartType !== undefined) {
-                        if (valuesModified(chTable, chType, chCol,
+                        if (valuesModified(chTable, chType, chCol, chCol2, chCol3, chCol4,
                                            chLow, chHigh,
                                            dialog.chartTable, dialog.chartType, dialog.chartValue1,
+                                           dialog.chartValue2, dialog.chartValue3, dialog.chartValue4,
                                            dialog.chartLowBar, dialog.chartHighBar)
                                 ) {
                             chTable = dialog.chartTable;
@@ -109,16 +64,17 @@ ListItem {
                             chCol2 = dialog.chartValue2;
                             chCol3 = dialog.chartValue3;
                             chCol4 = dialog.chartValue4;
-                            chLow = dialog.chartLowBar;
                             chHigh = dialog.chartHighBar;
-                            maxValue = dialog.chartMaxValue;
+                            chLow = dialog.chartLowBar;
                             heading = dialog.chartTitle;
+                            maxValue = dialog.chartMaxValue;
                             parametersChanged();
                             reset();
                         }
 
                         if (dialog.chartMaxValue !== undefined &&
                                 maxValue !== dialog.chartMaxValue) {
+                            parametersChanged();
                             rescale(maxValue, dialog.chartMaxValue);
                         }
                     }
@@ -136,20 +92,21 @@ ListItem {
             text: "header"
         }
 
-        Row {
+        Item {
+            height: Theme.itemSizeHuge
             width: parent.width - 2*x
             x: Theme.horizontalPageMargin
-            spacing: Theme.paddingMedium
+            //spacing: Theme.paddingMedium
 
             BarChart {
                 id: chart
-                width: parent.width - parent.spacing - summary.width
-                height: Theme.itemSizeHuge
+                height: parent.height
+                width: parent.width //- parent.spacing - summary.width
                 orientation: ListView.Horizontal
                 maxValue: 100
                 valueLabelOutside: true
                 highlight: Item {
-                    width: chart.currentItem.width
+                    width: chart.currentIndex >= 0 ? chart.currentItem.width : 0
                     Rectangle {
                         height: 3
                         width: parent.width - 2*x
@@ -167,6 +124,12 @@ ListItem {
                     liRoot.closeMenu()
                     liRoot.barSelected(barNr)
                 }
+                footer: Item {
+                    width: summary.width + Theme.paddingMedium
+                }
+                //header: Item {
+                //    width: summary.width + Theme.paddingMedium
+                //}
 
                 BusyIndicator {
                     anchors.centerIn: parent
@@ -185,6 +148,7 @@ ListItem {
                 property string barHi: ""
                 property string barLow: ""
                 property string chType: DataB.chartTypeSingle
+                property string fullDayValue
 
                 function reset() {
                     chartData.clear();
@@ -209,7 +173,7 @@ ListItem {
                     // set firstDate equal to the first date read from records
                     // and last equal to current date or the date of an empty list of records
                     first = ouraCloud.firstDate(table);
-                    first.setTime(first.getTime() + 8*60*60*1000); // avoid problems when changing to light saving time
+                    first.setTime(first.getTime() + 12*60*60*1000); // 12:00 to avoid problems between summer and winter
                     console.log("eka " + first.toDateString() + " " + first.getHours() + ":" + first.getMinutes() + ":" + first.getSeconds() + "  " + first.getUTCHours())
                     if (first < firstDate) {
                         firstDate = first;
@@ -249,6 +213,9 @@ ListItem {
                                 console.log(" " + table + ", " + col + ", " + last.toDateString() + ": " + val1)
                             }
                             // ----
+                            if (i === 1) {
+                                fullDayValue = val1 + "";
+                            }
 
                             // overwrite the last date
                             if (i === 0 && count > 0) {
@@ -277,6 +244,9 @@ ListItem {
                                                 day);
                             }
                             console.log("min/max " + val1 + "," + lowBar + " " + highBar + " i=" + i)
+                            if (i === 1) {
+                                fullDayValue = val1 + "";
+                            }
                         } else if (chType === DataB.chartTypeSleep) {
                             val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, last, -2)); // -1 is_longest==1, -2 sum of all suitable entries
                             val2 = Scripts.ouraToNumber(ouraCloud.value(table, col2, last, -2)); // -1 is_longest==1
@@ -296,6 +266,9 @@ ListItem {
                                 console.log(" ______ ")
                                 console.log(" " + (val1 + val2 + val3) + " = " + Scripts.secToHM(val1 + val2 + val3))
                                 console.log(" ______ ")
+                            }
+                            if (i === 1) {
+                                fullDayValue = Scripts.secToHM(val1 + val2 + val3);
                             }
                             //console.log("unityypit" + i)
                         } else {
@@ -386,7 +359,7 @@ ListItem {
                     last.setTime(last.getTime() + dayMs);
                     firstDate = last;
 
-                    positionViewAtEnd();
+                    //positionViewAtEnd();
 
                     console.log("haettuja arvoja " + i);
                     return;
@@ -401,29 +374,127 @@ ListItem {
 
             TrendView {
                 id: summary
-                height: chart.height
+                height: parent.height
                 text: qsTr("score")
                 factor: 1.2
                 maxValue: chart.maxValue
+                anchors.right: parent.right
 
                 property string scoreStr: chart.col
 
                 function fillData() {
-                    var val;
+                    var unit, val;
+
+                    // valueType = 0 vai 1?
                     console.log(chartId + " " + chart.table + ", " + chart.col)
                     if (chart.chType === DataB.chartTypeSleep) {
-                        val = "score";
-                        summary.maxValue = 100;
+                        val = "total";
+                        //summary.maxValue = 100;
                     } else {
                         val = chart.col
-                        summary.maxValue = chart.maxValue;
+                        //summary.maxValue = chart.maxValue;
+                    }
+                    if (chart.table === DataB.keyActivity) {
+                        unit = activityMeasures.unit(val);
+                    } else if (chart.table === DataB.keyReadiness) {
+                        unit = readinessMeasures.unit(val);
+                    } else if (chart.table === DataB.keySleep) {
+                        unit = sleepMeasures.unit(val);
+                    }
+                    if (unit === "second") {
+                        valueType = 1;
+                    } else if (unit === "minute") {
+                        valueType = 2;
                     }
 
                     averageWeek = ouraCloud.average(chart.table, val, 7);
                     averageMonth = ouraCloud.average(chart.table, val, 30);
                     averageYear = ouraCloud.average(chart.table, val, 365);
                 }
+
+                ActivityList {
+                    id: activityMeasures
+                }
+
+                ReadinessList {
+                    id: readinessMeasures
+                }
+
+                SleepList {
+                    id: sleepMeasures
+                }
             }
         }
+    }
+
+    function fillData() {
+        console.log("  " + chType + ", " + chTable + ", " + chCol)
+        return summary.fillData()
+    }
+
+    function newData() {
+        console.log("  " + chType + ", " + chTable + ", " + chCol)
+        return chart.newData();
+    }
+
+    function oldData() {
+        console.log("  " + chType + ", " + chTable + ", " + chCol)
+        return chart.oldData();
+    }
+
+    function positionViewAtIndex(barNr, position) {
+        if (position === undefined) {
+            position = ListView.Center;
+        }
+
+        return chart.positionViewAtIndex(barNr, position);
+    }
+
+    function rescale(oldMax, newMax) {
+        return chart.reScale(oldMax, newMax);
+    }
+
+    function reset() {
+        summary.fillData();
+        return chart.reset();
+    }
+
+    function selectDate(dateToSelect) {
+        var iDate, msDay = 24*60*60*1000;
+        iDate = Math.round((dateToSelect.getTime() - firstDate.getTime())/msDay);
+        currentIndex = iDate;
+        chart.positionViewAtIndex(currentIndex, ListView.Center)
+
+        return;
+    }
+
+    function valuesModified(tb0, typ0, val0a, val0b, val0c, val0d,
+                            low0, hgh0, max0,
+                          tb1, typ1, val1a, val1b, val1c, val1d,
+                            low1, hgh1, max1) {
+        var result = false;
+        if (tb1 === undefined || typ1 === undefined || val1a === undefined) {
+            result = false;
+        } else if (tb0 !== tb1 || typ0 !== typ1) {
+            result = true;
+        } else if (typ1 === DataB.chartTypeSleep) {
+            result = false;
+        } else if (val0a !== val1a) {
+            result = true;
+        } else if (val0b !== val1b) {
+            result = true;
+        } else if (val0c !== val1c) {
+            result = true;
+        } else if (val0d !== val1d) {
+            result = true;
+        } else if (typ1 === DataB.chartTypeMin && low0 !== low1) {
+            result = true;
+        } else if (typ1 === DataB.chartTypeMaxmin &&
+                   (low0 !== low1 || hgh0 !== hgh1)) {
+            result = true;
+        } else if (max0 !== max1) {
+            result = true;
+        }
+        return result;
     }
 }

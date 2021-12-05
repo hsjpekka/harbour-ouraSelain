@@ -29,7 +29,7 @@ Item {
     property bool   isValid: true
     property int    labelFontSize: Theme.fontSizeExtraSmall
     property int    maxValue: 1
-    property int    valueType: 0 // 0 - value, 1 - time
+    property int    valueType: 0 // 0 - value, 1 - secToHM, 2 - minToHM
     //property int    precision: 1
     property int    score: 0
     property real   _scale: (height - yearLabel.height - _vgap)/maxValue
@@ -37,7 +37,37 @@ Item {
     property int    _hgap: Theme.paddingSmall
 
     onAverageYearChanged: {
-        yearValue.labelTxt = Scripts.secToHM(averageYear)
+        if (valueType === 1) {
+            yearValue.labelTxt = Scripts.secToHM(averageYear)
+        } else if (valueType === 2) {
+            yearValue.labelTxt = Scripts.minToHM(averageYear)
+        }
+
+    }
+    onAverageMonthChanged: {
+        if (valueType === 1) {
+            monthValue.labelTxt = Scripts.secToHM(averageMonth)
+        } else if (valueType === 2) {
+            monthValue.labelTxt = Scripts.minToHM(averageMonth)
+        }
+    }
+    onAverageWeekChanged: {
+        if (valueType === 1) {
+            weekValue.labelTxt = Scripts.secToHM(averageWeek)
+        } else if (valueType === 2) {
+            weekValue.labelTxt = Scripts.minToHM(averageWeek)
+        }
+    }
+    onValueTypeChanged: {
+        if (valueType === 1) {
+            yearValue.labelTxt = Scripts.secToHM(averageYear)
+            monthValue.labelTxt = Scripts.secToHM(averageMonth)
+            weekValue.labelTxt = Scripts.secToHM(averageWeek)
+        } else if (valueType === 2) {
+            yearValue.labelTxt = Scripts.minToHM(averageYear)
+            monthValue.labelTxt = Scripts.minToHM(averageMonth)
+            weekValue.labelTxt = Scripts.minToHM(averageWeek)
+        }
     }
 
     Rectangle {
@@ -73,7 +103,7 @@ Item {
                 bottomMargin: _vgap
             }
 
-            property string labelTxt: Scripts.secToHM(averageYear)
+            property string labelTxt: ""
         }
 
         MouseArea {
@@ -81,6 +111,8 @@ Item {
             propagateComposedEvents: true
             onClicked: {
                 yearValue.visible = !yearValue.visible
+                monthValue.visible = false
+                weekValue.visible = false
             }
             onPressAndHold: {
                 mouse.accepted = false
@@ -121,13 +153,15 @@ Item {
                 bottomMargin: _vgap
             }
 
-            property string labelTxt: Scripts.secToHM(averageMonth)
+            property string labelTxt: ""
         }
 
         MouseArea {
             anchors.fill: parent
             onClicked: {
                 monthValue.visible = !monthValue.visible
+                yearValue.visible = false
+                weekValue.visible = false
             }
         }
     }
@@ -165,13 +199,15 @@ Item {
                 bottomMargin: _vgap
             }
 
-            property string labelTxt: Scripts.secToHM(averageWeek)
+            property string labelTxt: ""
         }
 
         MouseArea {
             anchors.fill: parent
             onClicked: {
                 weekValue.visible = !weekValue.visible
+                yearValue.visible = false
+                monthValue.visible = false
             }
         }
     }

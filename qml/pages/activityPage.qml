@@ -95,8 +95,9 @@ Page {
                     var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
                                                     "date": summaryDate } )
                     dialog.accepted.connect( function() {
-                        value = dialog.dateText
+                        //value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
+                        value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
                         ouraCloud.setDateConsidered(summaryDate)
                         updateValues()
                     } )
@@ -119,7 +120,7 @@ Page {
 
                     DetailItem {
                         id: valueMove
-                        label: qsTr("moving about")
+                        label: qsTr("moving every hour")
                         value: validDate? locals.moveHourly : "-"
                     }
 
@@ -150,7 +151,7 @@ Page {
             }
 
             ModExpandingSection { // durations
-                title: validDate? qsTr("active %1").arg(locals.timeActive) : "-"
+                title: validDate? qsTr("active time %1").arg(locals.timeActive) : "-"
                 font.pixelSize: Theme.fontSizeMedium
 
                 content.sourceComponent: Column {
@@ -203,7 +204,7 @@ Page {
 
                     DetailItem {
                         id: sumMovement
-                        label: qsTr("daily movement")
+                        label: qsTr("equivalent walking")
                         value: validDate? (locals.movement/1000).toFixed(1) + " km" : "-"
                     }
 
@@ -502,7 +503,7 @@ Page {
 
     function updateValues() {
         //DataB.log("activity update 1: " + new Date().toTimeString().substring(0,8))
-        validDate = ouraCloud.dateAvailable(DataB.keySleep, summaryDate);
+        validDate = ouraCloud.dateAvailable(DataB.keyActivity, summaryDate);
         //console.log("ActivityPage - Löytyykö päivä " + summaryDate + "? " + validDate);
         met1min.chartData.clear();
         met5min.chartData.clear();

@@ -5,16 +5,13 @@ import QtQuick.LocalStorage 2.0
 import "./utils/datab.js" as DataB
 import "./utils/scripts.js" as Scripts
 import "pages"
+import "cover"
 
 ApplicationWindow
 {
     id: applicationWindow
-    initialPage: Component { MainPage {
-            onRefreshOuraCloud: downloadOuraCloud()
-            onOpenSettings: setUpNow()
-        }
-    }
-    cover: Qt.resolvedUrl("cover/CoverPage.qml")
+    initialPage: mainPage
+    cover: coverPage
     //allowedOrientations: defaultAllowedOrientations
     Component.onCompleted: {
         var firstDateToRead
@@ -24,6 +21,8 @@ ApplicationWindow
             firstDateToRead = setDatesToRead()
             readOldRecords(firstDateToRead)
         }
+        coverPage.currentChart = "ch1"
+        coverPage.title = initialPage.chartTitle(coverPage.currentChart)
         console.log("- - - - - \n" + " vanhat luettu \n" + "- - - - -")
         if (personalAccessToken > "") {
             downloadOuraCloud()
@@ -35,26 +34,64 @@ ApplicationWindow
         console.log("- - - - - \n" + " alkukomennot tehty \n" + "- - - - -")
     }
 
+    signal storedDataRead()
+    signal settingsReady()
+
+    property int daysToRead: 14
     property var db: null
+    property int msDay: 24*60*60*1000
     property string personalAccessToken: ""
     property bool startingUp: true
 
-    signal storedDataRead()
-    signal settingsReady()
+    MainPage {
+        id: mainPage
+        onRefreshOuraCloud: downloadOuraCloud()
+        onOpenSettings: setUpNow()
+    }
+
+    CoverPage {
+        id: coverPage
+        currentChart: "ch1"
+        onNextPressed: {
+            console.log("painettu " + chStr)
+            if (chStr === "ch1") {
+                coverPage.currentChart = "ch2"
+            } else if (chStr === "ch2") {
+                coverPage.currentChart = "ch3"
+            } else if (chStr === "ch3") {
+                coverPage.currentChart = "ch4"
+            } else if (chStr === "ch4") {
+                coverPage.currentChart = "ch1"
+            } else {
+                console.log(" nykyinen " + chStr)
+            }
+            coverPage.title = initialPage.chartTitle(coverPage.currentChart)
+            coverPage.value = initialPage.latestValue(coverPage.currentChart)
+        }
+    }
 
     Timer {
         id: timerOldRecords
         interval: 10*1000
-        repeat: false // true to read few records at a time
+        repeat: true // true to read few records at a time
         running: true
         onTriggered: {
-            var noDef
-
-            readOldRecords(noDef, lastDate)
-            storedDataRead()
+            var date = firstDateToRead, more
+            more = readOldRecords(firstDateToRead, latestDateToRead)
+            if (more >= 0) {
+                storedDataRead()
+                firstDateToRead = new Date(firstDateToRead.getTime() - daysToRead*msDay)
+                //date.setTime(firstDateToRead.getTime() - daysToRead*msDay)
+                //firstDateToRead.setTime(firstDateToRead.getTime() - daysToRead*msDay)// = date
+                //latestDateToRead.setTime(latestDateToRead.getTime() - daysToRead*msDay)//date.setTime(latestDateToRead.getTime() - daysToRead*msDay)
+                latestDateToRead = new Date(latestDateToRead.getTime() - daysToRead*msDay)
+            } else {
+                repeat = false
+            }
         }
 
-        property date lastDate
+        property date firstDateToRead
+        property date latestDateToRead
     }
 
     Connections {
@@ -85,9 +122,15 @@ ApplicationWindow
         id: remorse
     }
 
+    function coverValue() {
+        var type, result;
+        return;
+    }
+
     function downloadOuraCloud(){
-        var lastDate = ouraCloud.lastDate(), msDay = 24*60*60*1000;
+        var lastDate = ouraCloud.lastDate();
         if (lastDate.getFullYear() !== 0) {
+            lastDate.setHours(12);
             lastDate.setTime(lastDate.getTime() - msDay);
             ouraCloud.setStartDate(lastDate.getFullYear(), lastDate.getMonth()+1,
                                    lastDate.getDate());
@@ -120,10 +163,7 @@ ApplicationWindow
 
     function readOldRecords(firstDate, lastDate) {
         // reads dates > firstDate and dates < lastDate
-        var compare = "", i, notDefined, oldRecs, ymdp1, ymdp2;        
-
-        DataB.log("readOldRecords: > " + (firstDate? firstDate.toDateString() : "-") + ", < " +
-                    (lastDate? lastDate.toDateString() : "-"))
+        var compare = "", i, notDefined, oldRecs, ymdp1, ymdp2, result;
 
         if (firstDate === undefined) {
             ymdp1 = -1;
@@ -150,8 +190,16 @@ ApplicationWindow
             console.log("viimeinen tallennettu " + ouraCloud.lastDate());
         }
         // */
+        if (i === 0) {
+            result = -1;
+        } else {
+            result = 0;
+        }
 
-        return;
+        DataB.log("readOldRecords: > " + (firstDate? firstDate.toDateString() : "-") + ", < " +
+                    (lastDate? lastDate.toDateString() : "-") + ", result = " + result)
+
+        return result;
     }
 
     function readSettings() {
@@ -167,16 +215,16 @@ ApplicationWindow
     }
 
     function setDatesToRead() {
-        var dateToShowFirst = new Date()
-        var extraDays = dateToShowFirst.getDay() - Scripts.firstDayOfWeek
-        var msDay = 24*60*60*1000
-        var fullWeeks = 9
+        var dateToShowFirst = new Date();
+        var extraDays = dateToShowFirst.getDay() - Scripts.firstDayOfWeek;
+        //var fullWeeks = 9;
 
         if (extraDays < 0) { // week starts on Monday (to Saturday)
-            extraDays = extraDays + 7
+            extraDays = extraDays + Math.min(7, daysToRead);
         }
-        dateToShowFirst = new Date(dateToShowFirst.getTime() - msDay*(fullWeeks*7 + extraDays));
-        timerOldRecords.lastDate = new Date(dateToShowFirst.getTime() - msDay);
+        dateToShowFirst = new Date(dateToShowFirst.getTime() - msDay*(daysToRead + extraDays));
+        timerOldRecords.latestDateToRead = new Date(dateToShowFirst.getTime() - msDay);
+        timerOldRecords.firstDateToRead = new Date(dateToShowFirst.getTime() - daysToRead*msDay);
 
         //console.log(" ensimmäinen ladattava päivä " + dateToShowFirst.toDateString());
         return dateToShowFirst;

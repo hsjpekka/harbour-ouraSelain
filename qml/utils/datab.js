@@ -10,6 +10,7 @@ var keySleep = "sleep", keyUserInfo = "userInfo";
 var keyPeriod = "period_id", keyDate = "summary_date", keyDateBT = "date";
 var chartTypeSingle = "ctSingle", chartTypeMin = "ctMin", chartTypeMaxmin = "ctMaxmin",
     chartTypeSleep = "ctSleepTypes";
+/*
 var keyChart1Table = "chart1Table", keyChart1Type = "chart1Type",
     keyChart1Value1 = "chart1Value1", keyChart1High = "chart1High",
     keyChart1Low = "chart1Low", keyChart1Value2 = "chart1Value2",
@@ -30,11 +31,12 @@ var keyChart4Table = "chart4Table", keyChart4Type = "chart4Type",
     keyChart4Low = "chart4Low", keyChart4Value2 = "chart4Value2",
     keyChart4Value3 = "chart4Value3", keyChart4Value4 = "chart4Value4",
     keyChart4Max = "chart4Size", keyChart4Title = "chart4Title";
+//*/
 var keyChartTable = "chartTable", keyChartType = "chartType",
     keyChartValue1 = "chartValue1", keyChartHigh = "chartHigh",
     keyChartLow = "chartLow", keyChartValue2 = "chartValue2",
-    keyChartValue3 = "chart4Value3", keyChartValue4 = "chartValue4",
-    keyChartMax = "chartSize", keyChartTitle = "chartTitle";
+    keyChartValue3 = "chartValue3", keyChartValue4 = "chartValue4",
+    keyChartMax = "chartMax", keyChartTitle = "chartTitle";
 
 // tables in database:
 // 'ouraCloud'

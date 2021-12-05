@@ -16,11 +16,13 @@ Page {
     ListModel { // {card, dataKey, dataValue}
         id: records
 
+        /*
         ListElement {
             card: "" // yyyymmddpp
             dataKey: ""
             dataValue: ""
         }
+        //*/
 
         function add(sctn, key, data) {
             records.append({ "card": sctn + "", "dataKey": key + "", "dataValue": data + "" })
@@ -111,6 +113,11 @@ Page {
                 singleRow = !singleRow
                 selectedKey = dataKey //lblTxt
                 console.log("1-rivi " + singleRow + " valittu " + selectedKey)
+                if (singleRow) {
+                    dataTxt.wrapMode = Text.NoWrap
+                } else {
+                    dataTxt.wrapMode = Text.WrapAtWordBoundaryOrAnywhere
+                }
             }
             onPressAndHold: {
                 selectedKey = dataKey //lblTxt
@@ -155,7 +162,8 @@ Page {
                 x: Theme.paddingLarge
                 y: lbl.height + Theme.paddingSmall
                 width: parent.width - x
-                wrapMode: parent.singleRow ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere
+                wrapMode: Text.NoWrap//Text.WrapAtWordBoundaryOrAnywhere
+                //visible: parent.singleRow
                 truncationMode: TruncationMode.Fade
                 text: dataValue //parent.dbTxt
             }
@@ -243,7 +251,7 @@ Page {
                 records.add("User Info", key, rec[key]);
             }
 
-            rec = JSON.parse(oura.printActivity());
+            rec = JSON.parse(ouraCloud.printActivity());
             if (rec[DataB.keyActivity] && rec[DataB.keyActivity].length) {
                 list = rec[DataB.keyActivity];
                 iN = list.length;
@@ -258,7 +266,7 @@ Page {
             }
 
             i = 0;
-            rec = JSON.parse(oura.printBedTimes());
+            rec = JSON.parse(ouraCloud.printBedTimes());
             if (rec[DataB.keyBedTime] && rec[DataB.keyBedTime].length) {
                 list = rec[DataB.keyBedTime];
                 iN = list.length;
@@ -273,7 +281,7 @@ Page {
             }
 
             i = 0;
-            rec = JSON.parse(oura.printReadiness());
+            rec = JSON.parse(ouraCloud.printReadiness());
             if (rec[DataB.keyReadiness] && rec[DataB.keyReadiness].length) {
                 list = rec[DataB.keyReadiness];
                 iN = list.length;
@@ -288,7 +296,7 @@ Page {
             }
 
             i = 0;
-            rec = JSON.parse(oura.printSleep());
+            rec = JSON.parse(ouraCloud.printSleep());
             if (rec[DataB.keySleep] && rec[DataB.keySleep].length) {
                 list = rec[DataB.keySleep];
                 iN = list.length;

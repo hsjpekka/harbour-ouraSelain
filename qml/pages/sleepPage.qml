@@ -87,8 +87,9 @@ Page {
                     var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
                                                     "date": summaryDate } )
                     dialog.accepted.connect( function() {
-                        value = dialog.dateText
+                        //value = dialog.dateText
                         summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
+                        value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
                         ouraCloud.setDateConsidered(summaryDate)
                         updateValues()
                     } )

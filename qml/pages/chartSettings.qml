@@ -15,12 +15,12 @@ Dialog {
     property string chartValue4
     property string chartLowBar
     property string chartHighBar
-    property int chartMaxValue
+    property alias chartMaxValue: maxInput.text
 
     onAccepted: {
         if (chartTable === DataB.keySleep &&
                 chartType === DataB.chartTypeSleep) {
-            chartTitle = qsTr("sleep modes")
+            chartTitle = qsTr("sleep levels")
             chartValue1 = "deep"
             chartValue2 = "light"
             chartValue3 = "rem"
@@ -219,30 +219,6 @@ Dialog {
                     maxInput.text = max
                     chartTitle = titleStr
                 }
-
-                function checkIndex(str) {
-                    console.log("pylväs " + str + "_" + activityModel.count + "." + readinessModel.count + "." + sleepModel.count)
-                    var i=0, ind=-1, model;
-                    if (record === DataB.keyActivity) {
-                        model = activityModel;
-                    } else if (record === DataB.keyReadiness) {
-                        model = readinessModel;
-                    } else if (record === DataB.keySleep) {
-                        model = sleepModel;
-                    }
-
-                    if (model !== undefined) {
-                        while (i<model.count) {
-                            if (str === model.get(i).text) {
-                                ind = i;
-                            }
-                            i++;
-                        }
-                    }
-                    console.log("pylväs " + str + " " + ind)
-
-                    return ind;
-                }
             }
             RecordFieldSelector {
                 //width: parent.width
@@ -255,30 +231,6 @@ Dialog {
                 onSelected: {
                     chartLowBar = selectedStr
                 }
-
-                function checkIndex(str) {
-                    console.log("min " + str + "_" + activityModel.count + "." + readinessModel.count + "." + sleepModel.count)
-                    var i=0, ind=-1, model;
-                    if (record === DataB.keyActivity) {
-                        model = activityModel;
-                    } else if (record === DataB.keyReadiness) {
-                        model = readinessModel;
-                    } else if (record === DataB.keySleep) {
-                        model = sleepModel;
-                    }
-
-                    if (model !== undefined) {
-                        while (i<model.count) {
-                            if (str === model.get(i).text) {
-                                ind = i;
-                            }
-                            i++;
-                        }
-                    }
-                    console.log("min " + str + " " + ind)
-
-                    return ind;
-                }
             }
             RecordFieldSelector {
                 //width: parent.width
@@ -289,42 +241,22 @@ Dialog {
                 onSelected: {
                     chartHighBar = selectedStr
                 }
-
-                function checkIndex(str) {
-                    //console.log("max " + str + "_" + activityModel.count + "." + readinessModel.count + "." + sleepModel.count)
-                    var i=0, ind=-1, model;
-                    if (record === DataB.keyActivity) {
-                        model = activityModel;
-                    } else if (record === DataB.keyReadiness) {
-                        model = readinessModel;
-                    } else if (record === DataB.keySleep) {
-                        model = sleepModel;
-                    }
-
-                    if (model !== undefined) {
-                        while (i<model.count) {
-                            if (str === model.get(i).text) {
-                                ind = i;
-                            }
-                            i++;
-                        }
-                    }
-                    //console.log("max " + str + " " + ind)
-
-                    return ind;
-                }
             }
 
             TextField {
                 id: maxInput
-                text: chartMaxValue
+                text: "101"
                 label: qsTr("chart maximum")
                 inputMethodHints: Qt.ImhFormattedNumbersOnly
                 validator: IntValidator {bottom: 0}
                 EnterKey.onClicked: {
-                    chartMaxValue = text
                     focus = false
                 }
+                //onFocusChanged: {
+                //    if (focus === false) {
+                //        chartMaxValue = text
+                //    }
+                //}
             }
         }
     }

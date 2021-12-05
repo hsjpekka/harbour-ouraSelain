@@ -466,14 +466,14 @@ QDate ouraCloudApi::firstDate(int first) // the first or last date in the latest
 {
     QDate date1, date2;
     QJsonValue locVal;
-    QJsonArray locArray;
+    //QJsonArray locArray;
     QJsonObject locObject;
-    QString str;
+    //QString str;
 
     date1 = firstDateIn(Activity, first);
-    str.append("Activity " + date1.toString(dateFormat));
+    //str.append("Activity " + date1.toString(dateFormat));
     date2 = firstDateIn(BedTimes, first);
-    str.append("BedTimes " + date1.toString(dateFormat));
+    //str.append("BedTimes " + date1.toString(dateFormat));
     if (date1.isValid()) {
         if (date2.isValid() && date2.daysTo(date1) > 0) {
             //str.append("bedTimes ");
@@ -483,7 +483,7 @@ QDate ouraCloudApi::firstDate(int first) // the first or last date in the latest
         date1 = date2;
     }
     date2 = firstDateIn(Readiness, first);
-    str.append("Readiness " + date1.toString(dateFormat));
+    //str.append("Readiness " + date1.toString(dateFormat));
     if (date1.isValid()) {
         if (date2.isValid() && date2.daysTo(date1) > 0) {
             //str.append("readiness ");
@@ -493,7 +493,7 @@ QDate ouraCloudApi::firstDate(int first) // the first or last date in the latest
         date1 = date2;
     }
     date2 = firstDateIn(Sleep, first);
-    str.append("Sleep " + date1.toString(dateFormat));
+    //str.append("Sleep " + date1.toString(dateFormat));
     if (date1.isValid()) {
         if (date2.isValid() && date2.daysTo(date1) > 0) {
             //str.append("sleep");
@@ -666,7 +666,7 @@ void ouraCloudApi::fromCloudSleep()
 void ouraCloudApi::fromCloudUserInfo()
 {
     QJsonObject cloudJson;
-    QJsonArray cloudArray;
+    //QJsonArray cloudArray;
     qInfo() << "fromCloudUserInfo: \n";
     //userActivity = convertToObject(activityReply);
     jsonInfo.clear();

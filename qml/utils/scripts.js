@@ -3,7 +3,7 @@
 var lastDate = ""; // "2016-03-23", date of the last fetched summary
 var personalAccessToken = "";
 var firstDayOfWeek = Qt.locale().firstDayOfWeek; // 0 - Sunday, 1 - Monday, ...
-var iGloba = 0;
+var iGloba = 0, msDay = 24*60*60*1000;
 
 function dateString(date, month, year) {
     var now = new Date(), str="";
@@ -51,6 +51,21 @@ function dayStr(day){
     return result;
 }
 
+function minToHM(min) {
+    var hours, mins, result;
+
+    hours = (min - min%60)/60;
+    mins = min - hours*60;
+
+    result = hours + ":";
+    if (mins < 10) {
+        result += "0";
+    }
+    result += mins;
+
+    return result;
+}
+
 function ouraToNumber(val, nanValue) {
     if (nanValue === undefined) {
         nanValue = 0;
@@ -64,19 +79,7 @@ function ouraToNumber(val, nanValue) {
 }
 
 function secToHM(sec) {
-    var hours, mins, result;
-
-    mins = (sec-sec%60)/60;
-    hours = (mins - mins%60)/60;
-    mins = mins - hours*60;
-
-    result = hours + ":";
-    if (mins < 10) {
-        result += "0";
-    }
-    result += mins;
-
-    return result;
+    return minToHM((sec - sec%60)/60);
 }
 
 function weekNumber(dateMs) {

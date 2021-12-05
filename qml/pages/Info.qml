@@ -29,13 +29,13 @@ Page {
                 width: parent.width - 2*x
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 plainText: qsTr("This app reads the contents of Oura Cloud. " +
-                                "API is described in %1.\n" +
+                                "API and values are described in %1.\n" +
                                 "The app cannot be used for reading the data from the ring, " +
                                 "nor to upload the data to Oura Cloud.").arg("https://cloud.ouraring.com/docs/")
             }
 
             SectionHeader {
-                text: qsTr("sleep types")
+                text: qsTr("sleep levels")
             }
 
             Row {
@@ -103,7 +103,7 @@ Page {
 
             Label {
                 color: Theme.highlightColor
-                text: qsTr("The value on a day summary column is the total sleeping time " +
+                text: qsTr("The value of the day sleep types column is the total sleeping time " +
                            "without the awake periods.")
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 x: Theme.horizontalPageMargin
@@ -116,7 +116,7 @@ Page {
 
             Label {
                 color: Theme.highlightColor
-                text: qsTr("The scores on the right hand side are average values of " +
+                text: qsTr("The scores on the right hand side are average values over " +
                            "365, 30 or 7 days. The latest half finished day is not " +
                            "taken into account.")
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -124,16 +124,19 @@ Page {
                 width: parent.width - 2*x
             }
 
+            SectionHeader {
+                text: qsTr("Yesterday's summaries")
+            }
+
             Label {
                 color: Theme.highlightColor
-                text: qsTr("The sign below the score tells whether the value of the latest " +
+                text: qsTr("The sign next to the score tells whether the score of the latest " +
                            "full day is larger than, smaller than, or equal to the average " +
                            "of the week. The color changes if the difference is big.")
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2*x
             }
-
         }
     }
 }
