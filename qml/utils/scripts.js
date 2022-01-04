@@ -83,20 +83,26 @@ function secToHM(sec) {
 }
 
 function weekNumber(dateMs) {
+    return weekNumberAndYear(dateMs)[1];
+}
+
+function weekNumberAndYear(dateMs) {
     // dateMs = ms since 1970-1-1 0:0:0.000 GMT
     // the first day of the year is on week 1, if
     // a) Sunday starts the week and the first day of year is Sun-Wed
     // b) Monday starts the week and the first day of year is Mon-Thu
     // otherwise it's on the last week of the previous year
+    // returns [year, weekNumber]
     var minMs = 60*1000;
-    var year = new Date(dateMs).getFullYear();
+    var theDate = new Date(dateMs);
+    var year = theDate.getFullYear();
     var firstDayOfYear = new Date(year, 0, 1, 0, 0, 0);
     var lastDayOfYear = new Date(year, 11, 31, 0, 0, 0);
     var wkDay = weekDay(firstDayOfYear.getTime()); // 0-6 Sun - Sat, or 1-7 Mon - Sun
     var lastDay = weekDay(lastDayOfYear.getTime());
     var wknow, diffMs, dayMs = 24*60*60*1000;
     var wk1Start; // day starting week 1
-    var timeZoneNow, timeZoneWinter;
+    var timeZoneNow, timeZoneWinter, result;
 
     if (wkDay > 3.5 + firstDayOfWeek) { // last years last week
         wk1Start = new Date(year, 0, firstDayOfWeek + 8 - wkDay, 0, 0, 0, 0);
@@ -107,7 +113,7 @@ function weekNumber(dateMs) {
             wk1Start = new Date(year-1, 11, 32 + firstDayOfWeek - wkDay, 0, 0, 0, 0);
     }
 
-    timeZoneNow = new Date(dateMs).getTimezoneOffset();
+    timeZoneNow = theDate.getTimezoneOffset();
     timeZoneWinter = firstDayOfYear.getTimezoneOffset();
 
     diffMs = dateMs - wk1Start.getTime() - (timeZoneNow - timeZoneWinter)*minMs; // ms since the first day of week 1
@@ -116,7 +122,11 @@ function weekNumber(dateMs) {
     else
         wknow = Math.floor(diffMs/(7*dayMs)) + 1;
 
-    return wknow;
+    if (theDate.getMonth() === 0 && wknow > 50) {
+        year--;
+    }
+
+    return [year, wknow];
 }
 
 function weekDay(dateMs) {

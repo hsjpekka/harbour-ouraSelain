@@ -123,15 +123,23 @@
     <name>HistoryChart</name>
     <message>
         <source>settings</source>
-        <translation>asetukset</translation>
+        <translation type="unfinished">asetukset</translation>
+    </message>
+    <message>
+        <source>dense layout</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sparce layout</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1, wk %2</source>
-        <translation>%1, vk %2</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>score</source>
-        <translation>tulos</translation>
+        <translation type="unfinished">tulos</translation>
     </message>
 </context>
 <context>
@@ -700,6 +708,22 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
     <message>
         <source>sleep levels</source>
         <translation>unen tasot</translation>
+    </message>
+    <message>
+        <source>activity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>readiness</source>
+        <translation type="unfinished">valmius</translation>
+    </message>
+    <message>
+        <source>sleep</source>
+        <translation type="unfinished">uni</translation>
+    </message>
+    <message>
+        <source>hide chart</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

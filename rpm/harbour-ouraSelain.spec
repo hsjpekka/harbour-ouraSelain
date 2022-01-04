@@ -13,7 +13,7 @@ Version:    0.3
 Release:    1
 Group:      Qt/Qt
 License:    LICENSE
-URL:        http://example.org/
+URL:        https://github.com/hsjpekka/harbour-ouraselain
 Source0:    %{name}-%{version}.tar.bz2
 Source100:  harbour-ouraselain.yaml
 Requires:   sailfishsilica-qt5 >= 0.10.9
@@ -24,7 +24,7 @@ BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  desktop-file-utils
 
 %description
-Browses the contents of the Oura Cloud
+Browses the contents of Oura Cloud
 
 
 %prep
@@ -51,6 +51,12 @@ rm -rf %{buildroot}
 %qmake5_install
 
 # >> install post
+if [ -d $HOME/.local/share/%{name}/%{name}]; then
+    if [ ! -d $HOME/.local/share/null.hsjpekka/%{name}]; then
+        mkdir $HOME/.local/share/null.hsjpekka/%{name}
+    fi
+    mv $HOME/.local/share/%{name}/%{name}/* $HOME/.local/share/null.hsjpekka/%{name}/
+fi
 # << install post
 
 desktop-file-install --delete-original       \

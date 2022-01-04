@@ -298,7 +298,7 @@ SilicaListView {
                        "bar4Value": v4*1.0, "bar4Color": clr4Str,
                        "localMax": vMax*1.0, "localMin": vMin*1.0,
                        "maxMinColor": vClrStr, "valLabel": vlbl});
-        }
+        }        
     }
 
     property int    arrayType: 0 // 0 - stack, 1 - side by side
@@ -328,6 +328,11 @@ SilicaListView {
     //property real   selectedBarHeight: 0
     //property string selectedBarLabel: ""
     property int ed: -1
+
+    readonly property var validDataElements: ["group", "barValue",
+        "barColor", "barLabel", "bar2Value", "bar2Color", "bar3Value",
+        "bar3Color", "bar4Value", "bar4Color", "localMax", "localMin",
+        "maxMinColor", "valLabel"]
 
     signal barSelected(int barNr, real barValue, string barLabel)
     signal barPressAndHold(int barNr, real barValue, string barLabel)
@@ -376,4 +381,16 @@ SilicaListView {
                                    varMin, varClr, lbl, vlbl);
     }
 
+    function modify(i, key, value) {
+        var result = false;
+        if (i > listData.count) {
+            return;
+        }
+
+        if (validDataElements.indexOf(key) >= 0) {
+            listData.setProperty(i, key, value);
+            result = true;
+        }
+        return result;
+    }
 }

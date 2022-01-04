@@ -6,7 +6,7 @@ var dbTable = "ouraCloud", keyYMDP = "ymdp", keyType = "type", keyRec = "record"
 // oura-keys
 var keyActivity = "activity", keyBedTime = "ideal_bedtimes", keyReadiness = "readiness";
 var keySleep = "sleep", keyUserInfo = "userInfo";
-var keyPeriod = "period_id", keyDate = "summary_date", keyDateBT = "date";
+var keyPeriod = "period_id", keyDate = "summary_date", keyDateBT = "date", keyChartTimeScale = "ctTimeScale";
 var chartTypeSingle = "ctSingle", chartTypeMin = "ctMin", chartTypeMaxmin = "ctMaxmin",
     chartTypeSleep = "ctSleepTypes";
 var keyChartTable = "chartTable", keyChartType = "chartType",

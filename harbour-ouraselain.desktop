@@ -7,5 +7,5 @@ Name=OuraSelain
 # Name[fi]=OuraSelain
 [X-Sailjail]
 Permissions=Internet
-OrganizationName=hsjpekka
-ApplicationName=OuraSelain
+OrganizationName=null.hsjpekka
+ApplicationName=harbour-ouraselain

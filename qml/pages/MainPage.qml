@@ -43,10 +43,19 @@ Page {
     Connections {
         target: applicationWindow
         onStoredDataRead: {
-            chart1.oldData()
-            chart2.oldData()
-            chart3.oldData()
-            chart4.oldData()
+            if (chart1.visible) {
+                chart1.oldData()
+            }
+            if (chart2.visible) {
+                chart2.oldData()
+            }
+            if (chart3.visible) {
+                chart3.oldData()
+            }
+            if (chart4.visible) {
+                chart4.oldData()
+            }
+
         }
         onSettingsReady: {
             setUpPage()
@@ -246,6 +255,7 @@ Page {
 
             HistoryChart {
                 id: chart1
+                visible: chTable !== ""
                 onParametersChanged: {
                     storeChartParameters(chartId, chTable, chType,
                                          chCol, chCol2, chCol3,
@@ -254,6 +264,12 @@ Page {
                 }
                 onBarSelected: {
                     selectColumn(chartId, barNr, firstDate.getTime())
+                }
+                onTimeScaleChanged: {
+                    chart2.changeTimeScale(chartTimeScale)
+                    chart3.changeTimeScale(chartTimeScale)
+                    chart4.changeTimeScale(chartTimeScale)
+                    storeChartTimeScale(chartTimeScale)
                 }
 
                 property string chartId: "ch1"
@@ -272,12 +288,14 @@ Page {
                     if (chType === DataB.chartTypeSleep) {
                         setValueLabel = true;
                     }
+                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
                     return;
                 }
             }
 
             HistoryChart {
                 id: chart2
+                visible: chTable !== ""
                 onBarSelected: {
                     selectColumn(chartId, barNr, firstDate.getTime())
                 }
@@ -286,6 +304,12 @@ Page {
                                          chCol, chCol2, chCol3,
                                          chCol4, chHigh, chLow,
                                          maxValue, heading)
+                }
+                onTimeScaleChanged: {
+                    chart1.changeTimeScale(chartTimeScale)
+                    chart3.changeTimeScale(chartTimeScale)
+                    chart4.changeTimeScale(chartTimeScale)
+                    storeChartTimeScale(chartTimeScale)
                 }
 
                 property string chartId: "ch2"
@@ -304,12 +328,14 @@ Page {
                     if (chType === DataB.chartTypeSleep) {
                         setValueLabel = true;
                     }
+                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale, 0));
                     return;
                 }
             }
 
             HistoryChart {
                 id: chart3
+                visible: chTable !== ""
                 onBarSelected: {
                     selectColumn(chartId, barNr, firstDate.getTime())
                 }
@@ -318,6 +344,12 @@ Page {
                                          chCol, chCol2, chCol3,
                                          chCol4, chHigh, chLow,
                                          maxValue, heading)
+                }
+                onTimeScaleChanged: {
+                    chart1.changeTimeScale(chartTimeScale)
+                    chart2.changeTimeScale(chartTimeScale)
+                    chart4.changeTimeScale(chartTimeScale)
+                    storeChartTimeScale(chartTimeScale)
                 }
 
                 property string chartId: "ch3"
@@ -336,12 +368,14 @@ Page {
                     if (chType === DataB.chartTypeSleep) {
                         setValueLabel = true;
                     }
+                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
                     return;
                 }
             }
 
             HistoryChart {
                 id: chart4
+                visible: chTable !== ""
                 onBarSelected: {
                     selectColumn(chartId, barNr, firstDate.getTime())
                 }
@@ -350,6 +384,12 @@ Page {
                                          chCol, chCol2, chCol3,
                                          chCol4, chHigh, chLow,
                                          maxValue, heading)
+                }
+                onTimeScaleChanged: {
+                    chart1.changeTimeScale(chartTimeScale)
+                    chart2.changeTimeScale(chartTimeScale)
+                    chart3.changeTimeScale(chartTimeScale)
+                    storeChartTimeScale(chartTimeScale)
                 }
 
                 property string chartId: "ch4"
@@ -368,6 +408,7 @@ Page {
                     if (chType === DataB.chartTypeSleep) {
                         setValueLabel = true;
                     }
+                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
                     return;
                 }
             }
@@ -643,4 +684,7 @@ Page {
         return;
     }
 
+    function storeChartTimeScale(currentTimeScale) {
+        return DataB.storeSettings(DataB.keyChartTimeScale, currentTimeScale + "");
+    }
 }

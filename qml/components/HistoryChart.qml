@@ -31,6 +31,7 @@ ListItem {
 
     signal parametersChanged()
     signal barSelected(int barNr)
+    signal timeScaleChanged(int chartTimeScale)
 
     ContextMenu {
         id: itemMenu
@@ -81,6 +82,13 @@ ListItem {
                 })
             }
         }
+        MenuItem {
+            text: (chart.timeScale === 0) ? qsTr("dense layout") : qsTr("sparce layout")
+            onClicked: {
+                changeTimeScale()
+                timeScaleChanged(chart.timeScale)
+            }
+        }
     }
 
     Column {
@@ -102,6 +110,8 @@ ListItem {
                 id: chart
                 height: parent.height
                 width: parent.width //- parent.spacing - summary.width
+                barWidth: timeScale === 1? narrowBar : wideBar
+                showLabel: timeScale !== 1
                 orientation: ListView.Horizontal
                 maxValue: 100
                 valueLabelOutside: true
@@ -149,6 +159,40 @@ ListItem {
                 property string barLow: ""
                 property string chType: DataB.chartTypeSingle
                 property string fullDayValue
+                property int timeScale: 0 // 0 - days grouped by week, 1 - days grouped by month
+                property int wideBar: Theme.fontSizeMedium
+                property int narrowBar: 1.5*Theme.paddingSmall
+
+                function changeGrouping(newTimeScale) {
+                    // if timeScale = 0, section = "year, week"
+                    // if timeScale = 1, section = "year, month"
+                    var summaryDate = firstDate, sct, week, i;
+
+                    if (typeof newTimeScale === typeof 1 || typeof newTimeScale === typeof 1.0 || typeof newTimeScale === typeof "" ) {
+                        timeScale = newTimeScale*1.0;
+                    } else {
+                        DataB.log("unknown timeScale: " + newTimeScale + ", set to 0");
+                        timeScale = 0;
+                    }
+                    if (timeScale > 1 || timeScale < 0) {
+                        DataB.log("unknown timeScale: " + timeScale);
+                        timeScale = 0;
+                    }
+
+                    summaryDate.setHours(12); // avoid problems related to light saving time
+                    for (i=0; i < chart.count; i++) {
+                        if (timeScale === 0) {
+                            week = Scripts.weekNumberAndYear(summaryDate.getTime());
+                            sct = qsTr("%1, wk %2").arg(week[0]).arg(week[1]);
+                        } else if (timeScale === 1) {
+                            sct = summaryDate.getFullYear() + ", " + Qt.locale().monthName(summaryDate.getMonth(), Locale.ShortFormat);
+                        }
+                        chart.modify(i, "group", sct);
+
+                        summaryDate.setTime(summaryDate.getTime() + Scripts.msDay)
+                    }
+                    return;
+                }
 
                 function reset() {
                     chartData.clear();
@@ -164,6 +208,7 @@ ListItem {
                     var val1, val2, val3, val4, highBar, lowBar, day, sct;
                     var now = new Date(), dayMs = 24*60*60*1000, dum;
                     var first, last, diffMs, diffDays, i;
+                    var week;
 
                     if (ouraCloud.numberOfRecords(table) <= 0) {
                         DataB.log("no " + table + "-data")
@@ -192,7 +237,12 @@ ListItem {
 
                     for (i=0; i<diffDays; i++) {
                         day = Scripts.dayStr(last.getDay());
-                        sct = qsTr("%1, wk %2").arg(last.getFullYear()).arg(Scripts.weekNumber(last.getTime()));
+                        if (timeScale === 0) {
+                            week = Scripts.weekNumberAndYear(last.getTime());
+                            sct = qsTr("%1, wk %2").arg(week[0]).arg(week[1]);
+                        } else {
+                            sct = last.getFullYear() + ", " + Qt.locale().monthName(last.getMonth(), Locale.ShortFormat);
+                        }
 
                         if (chType === DataB.chartTypeSingle) {
                             val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, last));
@@ -270,7 +320,7 @@ ListItem {
 
                 function oldData() {
                     var val1, val2, val3, val4, highBar, lowBar, diffMs, diffDays, dayStr, sct;
-                    var first, last, dayMs = 24*60*60*1000, i=0;
+                    var first, last, dayMs = 24*60*60*1000, week, i=0;
 
                     first = ouraCloud.firstDate(table);
 
@@ -291,7 +341,12 @@ ListItem {
                     diffDays = Math.ceil(diffMs/dayMs);
 
                     while (i< diffDays) {
-                        sct = qsTr("%1, wk %2").arg(last.getFullYear()).arg(Scripts.weekNumber(last.getTime()));
+                        if (timeScale === 0) {
+                            week = Scripts.weekNumberAndYear(last.getTime());
+                            sct = qsTr("%1, wk %2").arg(week[0]).arg(week[1]);
+                        } else {
+                            sct = last.getFullYear() + ", " + Qt.locale().monthName(last.getMonth(), Locale.ShortFormat);
+                        }
                         dayStr = Scripts.dayStr(last.getDay());
 
                         if (chType === DataB.chartTypeSingle) {
@@ -333,7 +388,6 @@ ListItem {
                     chart.maxValue = newMax;
                     return;
                 }
-
             }
 
             TrendView {
@@ -385,6 +439,17 @@ ListItem {
                 }
             }
         }
+    }
+
+    function changeTimeScale(newTimeScale) { // 0 - days grouped by week, 1 - days grouped by month
+        if (newTimeScale === undefined) {
+            if (chart.timeScale === 0) {
+                newTimeScale = 1;
+            } else {
+                newTimeScale = 0;
+            }
+        }
+        return chart.changeGrouping(newTimeScale);
     }
 
     function fillData() {

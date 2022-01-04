@@ -5,14 +5,14 @@ Release: 1
 # The contents of the Group field should be one of the groups listed here:
 # https://github.com/mer-tools/spectacle/blob/master/data/GROUPS
 Group: Qt/Qt
-URL: http://example.org/
+URL: https://github.com/hsjpekka/harbour-ouraselain
 License: LICENSE
 # This must be generated before uploading a package to a remote build service.
 # Usually this line does not need to be modified.
 Sources:
 - '%{name}-%{version}.tar.bz2'
 Description: |
-  Browses the contents of the Oura Cloud
+  Browses the contents of Oura Cloud
 Configure: none
 Builder: qmake5
 

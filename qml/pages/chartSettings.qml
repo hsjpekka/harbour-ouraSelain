@@ -50,23 +50,31 @@ Dialog {
                     ListModel {
                         id: recordsModel
                         ListElement {
+                            txt: qsTr("activity")
                             value: "activity" //DataB.keyActivity
                         }
                         ListElement {
+                            txt: qsTr("readiness")
                             value: "readiness" //DataB.keyReadiness
                         }
                         ListElement {
+                            txt: qsTr("sleep")
                             value: "sleep" //DataB.keySleep
+                        }
+                        ListElement {
+                            txt: qsTr("hide chart")
+                            value: ""
                         }
                     }
 
                     Repeater {
                         model: recordsModel
                         MenuItem {
-                            text: model.value
+                            text: model.txt
                             onClicked: {
-                                chartTable = text
+                                chartTable = value
                             }
+                            property string value: model.value
                         }
                     }
                 }
@@ -86,6 +94,7 @@ Dialog {
             ComboBox {
                 label: qsTr("chart type")
                 width: parent.width
+                visible: chartTable !== ""
                 currentIndex: checkIndex(chartType)
                 menu: ContextMenu {
                     ListModel {
@@ -160,7 +169,8 @@ Dialog {
                 label: chartType === DataB.chartTypeSingle?
                            qsTr("value") : qsTr("column")
                 record: chartTable
-                visible: chartType !== DataB.chartTypeSleep
+                visible: chartType !== DataB.chartTypeSleep &&
+                         chartTable !== ""
                 currentIndex: checkIndex(chartValue1)
                 onSelected: {
                     chartValue1 = selectedStr
@@ -175,7 +185,8 @@ Dialog {
                            qsTr("lower limit") : qsTr("cross bar")
                 record: chartTable
                 visible: (chartType === DataB.chartTypeMin ||
-                          chartType === DataB.chartTypeMaxmin)
+                          chartType === DataB.chartTypeMaxmin) &&
+                         chartTable !== ""
                 currentIndex: checkIndex(chartLowBar)
                 onSelected: {
                     chartLowBar = selectedStr
@@ -185,7 +196,8 @@ Dialog {
                 //width: parent.width
                 label: qsTr("upper limit")
                 record: chartTable
-                visible: chartType === DataB.chartTypeMaxmin
+                visible: chartType === DataB.chartTypeMaxmin &&
+                         chartTable !== ""
                 currentIndex: checkIndex(chartHighBar)
                 onSelected: {
                     chartHighBar = selectedStr
@@ -196,6 +208,7 @@ Dialog {
                 id: maxInput
                 text: "101"
                 label: qsTr("chart maximum")
+                visible: chartTable !== ""
                 inputMethodHints: Qt.ImhFormattedNumbersOnly
                 validator: IntValidator {bottom: 0}
                 EnterKey.onClicked: {
