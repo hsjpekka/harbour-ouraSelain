@@ -32,6 +32,7 @@ ListItem {
     signal parametersChanged()
     signal barSelected(int barNr)
     signal timeScaleChanged(int chartTimeScale)
+    signal hideChart()
 
     ContextMenu {
         id: itemMenu
@@ -89,6 +90,12 @@ ListItem {
                 timeScaleChanged(chart.timeScale)
             }
         }
+        MenuItem {
+            text: qsTr("hide chart")
+            onClicked: {
+                hideChart()
+            }
+        }
     }
 
     Column {
@@ -97,7 +104,7 @@ ListItem {
 
         SectionHeader {
             id: title
-            text: "header"
+            text: "header" + chartId
         }
 
         Item {
@@ -137,9 +144,6 @@ ListItem {
                 footer: Item {
                     width: summary.width + Theme.paddingMedium
                 }
-                //header: Item {
-                //    width: summary.width + Theme.paddingMedium
-                //}
 
                 BusyIndicator {
                     anchors.centerIn: parent

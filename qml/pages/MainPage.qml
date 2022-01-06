@@ -12,30 +12,32 @@ Page {
     signal refreshOuraCloud()
     signal openSettings()
 
+    property alias chartCount: chartsView.count
+
     Connections {
         target: ouraCloud
         onFinishedActivity: {
             if (_reloaded) {
                 resetActivityData()
             } else {
-                fillActivityData()
+                cloudActivityData()
             }
         }
         onFinishedBedTimes: {
-            fillBedTimeData()
+            cloudBedTimeData()
         }
         onFinishedReadiness: {
             if (_reloaded) {
                 resetReadinessData()
             } else {
-                fillReadinessData()
+                cloudReadinessData()
             }
         }
         onFinishedSleep: {
             if (_reloaded) {
                 resetSleepData()
             } else {
-                fillSleepData()
+                cloudSleepData()
             }
         }
     }
@@ -43,29 +45,53 @@ Page {
     Connections {
         target: applicationWindow
         onStoredDataRead: {
-            if (chart1.visible) {
-                chart1.oldData()
-            }
-            if (chart2.visible) {
-                chart2.oldData()
-            }
-            if (chart3.visible) {
-                chart3.oldData()
-            }
-            if (chart4.visible) {
-                chart4.oldData()
-            }
-
+            chartsView.oldData()
         }
         onSettingsReady: {
             setUpPage()
         }
     }
 
-    SilicaFlickable {
+    SilicaListView {
+        id: chartsView
         anchors.fill: parent
-        contentHeight: col.height
         width: parent.width
+        header: trends
+        footer: ListItem {
+            contentHeight: footerTxt.height
+            menu: ContextMenu {
+                MenuItem {
+                    text: qsTr("add new chart")
+                    onClicked: {
+                        chartsList.add(1);
+                    }
+                }
+            }
+
+            Label {
+                id: footerTxt
+                text: qsTr("long press to add a chart")
+                color: Theme.secondaryColor
+                visible: !column.visible
+                x: Theme.horizontalPageMargin
+            }
+        }
+
+        delegate: chartDelegate
+        model: ListModel {
+            id: chartsList
+
+            function add(totalCount) {
+                var i = 0, N;
+                N = totalCount - count;
+                while (i < N) {
+                    append({chartNr: i, chartTable: "", title: "",
+                               mainValue: "" })
+                    i++;
+                }
+                return i;
+            }
+        }
 
         PullDownMenu {
             MenuItem {
@@ -141,12 +167,126 @@ Page {
             }
         }
 
-        Column {
-            id: col
-            width: parent.width
+        VerticalScrollDecorator {}
+
+        function changeTimeScales(chartTimeScale) {
+            var i = 0;
+            while (i < count) {
+                model.get(i).changeTimeScale(chartTimeScale);
+                i++;
+            }
+            return;
+        }
+
+        function latestItem(chartId) {
+            var result, chart, i;
+
+            if (chartId < count) {
+                chart = model.get(chartId);
+                if (chart.valuesList.count > 1) {
+                    i = chart.valuesList.count - 2;
+                    result = chart.valuesList.get(valuesList.count - 2);
+                } else if (chart.valuesList.count === 1) {
+                    result = chart.valuesList.get(0);
+                }
+            }
+
+            return result;
+        }
+
+        function latestType(chartId) {
+            var result;
+
+            if (chartId < count) {
+                result = model.get(chartId).chType;
+            }
+
+            return result;
+        }
+
+        function latestValue(chartId) {
+            var result;
+
+            if (chartId < count) {
+                result = model.get(chartId).latestValue;
+            }
+
+            return;
+        }
+
+        function newData(dataType) {
+            var chart, i=0;
+
+            while (i < count) {
+                chart = model.get(i);
+                if (chart.chTable === dataType) {
+                    chart.newData();
+                    chart.fillData();
+                }
+            }
+
+            return;
+        }
+
+        function oldData() {
+            var i=0;
+
+            while (i < count) {
+                model.get(i).oldData();
+                i++;
+            }
+
+            return;
+        }
+
+        function resetData(dataType) {
+            var chart, i=0;
+            while (i < count) {
+                chart = model.get(i);
+                if (chart.chTable === dataType) {
+                    chart.reset();
+                }
+            }
+            return;
+        }
+
+        function selectColumn(chartId, barNr, firstDateTime) {
+            var chart, i=0;
+
+            txtDate.summaryDate = new Date(firstDateTime + barNr*msDay);
+
+            while(i < count) {
+                if (i !== chartId) {
+                    chart = model.get(i);
+                    chart.currentIndex = barNr;
+                    chart.positionViewAtIndex(barNr, ListView.Center);
+                }
+                i++;
+            }
+
+            activityTrend.fillData();
+            readinessTrend.fillData();
+            sleepTrend.fillData();
+
+            return;
+        }
+
+        function setUpPage() {
+            var i=0;
+            while(i < count) {
+                model.get(i).setUpChart();
+                i++;
+            }
+        }
+
+    }
+
+    Component {
+        id: trends
+        Item {
+            width: page.width
 
             PageHeader {
-                id: header
                 title: qsTr("Summary")
             }
 
@@ -253,173 +393,50 @@ Page {
                 }
             }
 
-            HistoryChart {
-                id: chart1
-                visible: chTable !== ""
-                onParametersChanged: {
-                    storeChartParameters(chartId, chTable, chType,
-                                         chCol, chCol2, chCol3,
-                                         chCol4, chHigh, chLow,
-                                         maxValue, heading)
-                }
-                onBarSelected: {
-                    selectColumn(chartId, barNr, firstDate.getTime())
-                }
-                onTimeScaleChanged: {
-                    chart2.changeTimeScale(chartTimeScale)
-                    chart3.changeTimeScale(chartTimeScale)
-                    chart4.changeTimeScale(chartTimeScale)
-                    storeChartTimeScale(chartTimeScale)
-                }
+        }
+    }
 
-                property string chartId: "ch1"
-
-                function setUpChart() {
-                    heading = DataB.getSetting(chartId + DataB.keyChartTitle, qsTr("active calories"));
-                    chTable = DataB.getSetting(chartId + DataB.keyChartTable, DataB.keyActivity);
-                    chType = DataB.getSetting(chartId + DataB.keyChartType, DataB.chartTypeSingle);
-                    chCol = DataB.getSetting(chartId + DataB.keyChartCol, "cal_active");
-                    chCol2 = DataB.getSetting(chartId + DataB.keyChartCol2, "");
-                    chCol3 = DataB.getSetting(chartId + DataB.keyChartCol3, "");
-                    chCol4 = DataB.getSetting(chartId + DataB.keyChartCol4, "");
-                    chHigh = DataB.getSetting(chartId + DataB.keyChartHigh, "");
-                    chLow = DataB.getSetting(chartId + DataB.keyChartLow, "");
-                    maxValue = DataB.getSetting(chartId + DataB.keyChartMax, 700);
-                    if (chType === DataB.chartTypeSleep) {
-                        setValueLabel = true;
-                    }
-                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
-                    return;
-                }
+    Component {
+        id: chartDelegate
+        HistoryChart {
+            onParametersChanged: {
+                storeChartParameters(chartId, chTable, chType,
+                                     chCol, chCol2, chCol3,
+                                     chCol4, chHigh, chLow,
+                                     maxValue, heading)
+                chartsList.set(index)
+            }
+            onBarSelected: {
+                selectColumn(chartId, barNr, firstDate.getTime())
+            }
+            onTimeScaleChanged: {
+                storeChartTimeScale(chartTimeScale)
+            }
+            onHideChart: {
+                chartsList.remove(chartsList.index)
             }
 
-            HistoryChart {
-                id: chart2
-                visible: chTable !== ""
-                onBarSelected: {
-                    selectColumn(chartId, barNr, firstDate.getTime())
-                }
-                onParametersChanged: {
-                    storeChartParameters(chartId, chTable, chType,
-                                         chCol, chCol2, chCol3,
-                                         chCol4, chHigh, chLow,
-                                         maxValue, heading)
-                }
-                onTimeScaleChanged: {
-                    chart1.changeTimeScale(chartTimeScale)
-                    chart3.changeTimeScale(chartTimeScale)
-                    chart4.changeTimeScale(chartTimeScale)
-                    storeChartTimeScale(chartTimeScale)
-                }
+            property string chartId: "ch" + index
 
-                property string chartId: "ch2"
-
-                function setUpChart() {
-                    heading = DataB.getSetting(chartId + DataB.keyChartTitle, qsTr("sleep levels"));
-                    chTable = DataB.getSetting(chartId + DataB.keyChartTable, DataB.keySleep);
-                    chType = DataB.getSetting(chartId + DataB.keyChartType, DataB.chartTypeSleep);
-                    chCol = DataB.getSetting(chartId + DataB.keyChartCol, "deep");
-                    chCol2 = DataB.getSetting(chartId + DataB.keyChartCol2, "light");
-                    chCol3 = DataB.getSetting(chartId + DataB.keyChartCol3, "rem");
-                    chCol4 = DataB.getSetting(chartId + DataB.keyChartCol4, "awake");
-                    chHigh = DataB.getSetting(chartId + DataB.keyChartHigh, "");
-                    chLow = DataB.getSetting(chartId + DataB.keyChartLow, "");
-                    maxValue = DataB.getSetting(chartId + DataB.keyChartMax, 10*60*60);
-                    if (chType === DataB.chartTypeSleep) {
-                        setValueLabel = true;
-                    }
-                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale, 0));
-                    return;
+            function setUpChart(defTitle, defTable, defType, defM1, defM2,
+                                defM3, defM4, defHigh, defLow, defMax) {
+                heading = DataB.getSetting(chartId + DataB.keyChartTitle, defTitle);
+                chTable = DataB.getSetting(chartId + DataB.keyChartTable, defTable);
+                chType = DataB.getSetting(chartId + DataB.keyChartType, defType);
+                chCol = DataB.getSetting(chartId + DataB.keyChartCol, defM1);
+                chCol2 = DataB.getSetting(chartId + DataB.keyChartCol2, defM2);
+                chCol3 = DataB.getSetting(chartId + DataB.keyChartCol3, defM3);
+                chCol4 = DataB.getSetting(chartId + DataB.keyChartCol4, defM4);
+                chHigh = DataB.getSetting(chartId + DataB.keyChartHigh, defHigh);
+                chLow = DataB.getSetting(chartId + DataB.keyChartLow, defLow);
+                maxValue = DataB.getSetting(chartId + DataB.keyChartMax, defMax);
+                if (chType === DataB.chartTypeSleep) {
+                    setValueLabel = true;
                 }
-            }
-
-            HistoryChart {
-                id: chart3
-                visible: chTable !== ""
-                onBarSelected: {
-                    selectColumn(chartId, barNr, firstDate.getTime())
-                }
-                onParametersChanged: {
-                    storeChartParameters(chartId, chTable, chType,
-                                         chCol, chCol2, chCol3,
-                                         chCol4, chHigh, chLow,
-                                         maxValue, heading)
-                }
-                onTimeScaleChanged: {
-                    chart1.changeTimeScale(chartTimeScale)
-                    chart2.changeTimeScale(chartTimeScale)
-                    chart4.changeTimeScale(chartTimeScale)
-                    storeChartTimeScale(chartTimeScale)
-                }
-
-                property string chartId: "ch3"
-
-                function setUpChart() {
-                    heading = DataB.getSetting(chartId + DataB.keyChartTitle, qsTr("sleep time hearth beat rate"));
-                    chTable = DataB.getSetting(chartId + DataB.keyChartTable, DataB.keySleep);
-                    chType = DataB.getSetting(chartId + DataB.keyChartType, DataB.chartTypeMin);
-                    chCol = DataB.getSetting(chartId + DataB.keyChartCol, "hr_average");
-                    chCol2 = DataB.getSetting(chartId + DataB.keyChartCol2, "");
-                    chCol3 = DataB.getSetting(chartId + DataB.keyChartCol3, "");
-                    chCol4 = DataB.getSetting(chartId + DataB.keyChartCol4, "");
-                    chHigh = DataB.getSetting(chartId + DataB.keyChartHigh, "");
-                    chLow = DataB.getSetting(chartId + DataB.keyChartLow, "hr_lowest");
-                    maxValue = DataB.getSetting(chartId + DataB.keyChartMax, 60);
-                    if (chType === DataB.chartTypeSleep) {
-                        setValueLabel = true;
-                    }
-                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
-                    return;
-                }
-            }
-
-            HistoryChart {
-                id: chart4
-                visible: chTable !== ""
-                onBarSelected: {
-                    selectColumn(chartId, barNr, firstDate.getTime())
-                }
-                onParametersChanged: {
-                    storeChartParameters(chartId, chTable, chType,
-                                         chCol, chCol2, chCol3,
-                                         chCol4, chHigh, chLow,
-                                         maxValue, heading)
-                }
-                onTimeScaleChanged: {
-                    chart1.changeTimeScale(chartTimeScale)
-                    chart2.changeTimeScale(chartTimeScale)
-                    chart3.changeTimeScale(chartTimeScale)
-                    storeChartTimeScale(chartTimeScale)
-                }
-
-                property string chartId: "ch4"
-
-                function setUpChart() {
-                    heading = DataB.getSetting(chartId + DataB.keyChartTitle, qsTr("readiness"));
-                    chTable = DataB.getSetting(chartId + DataB.keyChartTable, DataB.keyReadiness);
-                    chType = DataB.getSetting(chartId + DataB.keyChartType, DataB.chartTypeSingle);
-                    chCol = DataB.getSetting(chartId + DataB.keyChartValue1, "score");
-                    chCol2 = DataB.getSetting(chartId + DataB.keyChartValue2, "");
-                    chCol3 = DataB.getSetting(chartId + DataB.keyChartValue3, "");
-                    chCol4 = DataB.getSetting(chartId + DataB.keyChartValue4, "");
-                    chHigh = DataB.getSetting(chartId + DataB.keyChartHigh, "");
-                    chLow = DataB.getSetting(chartId + DataB.keyChartLow, "");
-                    maxValue = DataB.getSetting(chartId + DataB.keyChartMax, 100);
-                    if (chType === DataB.chartTypeSleep) {
-                        setValueLabel = true;
-                    }
-                    changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
-                    return;
-                }
-            }
-
-            Rectangle {
-                height: Theme.fontSizeExtraSmall
-                width: 1
-                color: "transparent"
+                changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
+                return;
             }
         }
-        VerticalScrollDecorator {}
     }
 
     property real factor: 1.1 // limit for highlighting trends
@@ -446,216 +463,71 @@ Page {
         return result;
     }
 
-    function chartTitle(chrt){
+    function chartTitle(chrt){ // cover
         var result;
-        if (chrt === chart1.chartId){
-            result = chart1.heading;
-        } else if (chrt === chart2.chartId){
-            result = chart2.heading;
-        } else if (chrt === chart3.chartId){
-            result = chart3.heading;
-        } else if (chrt === chart4.chartId){
-            result = chart4.heading;
+        if (chrt < chartsList.count) {
+            result = chartsList.get(i).chartTitle
         }
 
         return result;
     }
 
-    function fillActivityData() {
+    function cloudActivityData() {
         ouraCloud.setDateConsidered();
         activityTrend.fillData();
-        if (chart1.chTable === DataB.keyActivity) {
-            chart1.newData();
-            chart1.fillData();
-        }
-        if (chart2.chTable === DataB.keyActivity) {
-            chart2.newData();
-            chart2.fillData();
-        }
-        if (chart3.chTable === DataB.keyActivity) {
-            chart3.newData();
-            chart3.fillData();
-        }
-        if (chart4.chTable === DataB.keyActivity) {
-            chart4.newData();
-            chart4.fillData();
-        }
+        chartsView.fillData(DataB.keyActivity);
 
         return;
     }
 
-    function fillBedTimeData() {
+    function cloudBedTimeData() {
         return;
     }
 
-    function fillReadinessData() {
+    function cloudReadinessData() {
         ouraCloud.setDateConsidered();
         readinessTrend.fillData();
-        if (chart1.chTable === DataB.keyReadiness) {
-            chart1.newData();
-            chart1.fillData();
-        }
-        if (chart2.chTable === DataB.keyReadiness) {
-            chart2.newData();
-            chart2.fillData();
-        }
-        if (chart3.chTable === DataB.keyReadiness) {
-            chart3.newData();
-            chart3.fillData();
-        }
-        if (chart4.chTable === DataB.keyReadiness) {
-            chart4.newData();
-            chart4.fillData();
-        }
+        chartsView.fillData(DataB.keyReadiness);
         return;
     }
 
-    function fillSleepData() {
+    function cloudSleepData() {
         ouraCloud.setDateConsidered();
         sleepTrend.fillData();
-        if (chart1.chTable === DataB.keySleep) {
-            chart1.newData();
-            chart1.fillData();
-        }
-        if (chart2.chTable === DataB.keySleep) {
-            chart2.newData();
-            chart2.fillData();
-        }
-        if (chart3.chTable === DataB.keySleep) {
-            chart3.newData();
-            chart3.fillData();
-        }
-        if (chart4.chTable === DataB.keySleep) {
-            chart4.newData();
-            chart4.fillData();
-        }
+        chartsView.fillData(DataB.keySleep);
         return;
     }
 
     function latestItem(chartId) {
-        var result, i;
-        if (chartId === chart1.chartId) {
-            i = chart1.valuesList.count - 2; //count - 1 = current day
-            result = chart1.valuesList.get(i);
-        } else if (chartId === chart3.chartId) {
-            i = chart2.valuesList.count - 2; //count - 1 = current day
-            result = chart2.valuesList.get(i);
-        } else if (chartId === chart3.chartId) {
-            i = chart3.valuesList.count - 2; //count - 1 = current day
-            result = chart3.valuesList.get(i);
-        } else if (chartId === chart4.chartId) {
-            i = chart4.valuesList.count - 2; //count - 1 = current day
-            result = chart4.valuesList.get(i);
-        }
-        return result;
+        return chartsView.latestItem(chartId);
     }
 
     function latestType(chartId) {
-        var result;
-        if (chartId === chart1.chartId) {
-            result = chart1.chType;
-        } else if (chartId === chart2.chartId) {
-            result = chart2.chType;
-        } else if (chartId === chart3.chartId) {
-            result = chart3.chType;
-        } else if (chartId === chart4.chartId) {
-            result = chart4.chType;
-        }
-        return result;
+        return chartsView.latestType(chartId);
     }
 
     function latestValue(chrt){
-        var result;
-        if (chrt === chart1.chartId){
-            result = chart1.latestValue;
-        } else if (chrt === chart2.chartId){
-            result = chart2.latestValue;
-        } else if (chrt === chart3.chartId){
-            result = chart3.latestValue;
-        } else if (chrt === chart4.chartId){
-            result = chart4.latestValue;
-        }
-
-        return result;
+        return chartsView.latestValue(chrt);
     }
 
     function resetActivityData() {
         ouraCloud.setDateConsidered();
         activityTrend.fillData();
-        if (chart1.chTable === DataB.keyActivity) {
-            chart1.reset();
-        }
-        if (chart2.chTable === DataB.keyActivity) {
-            chart2.reset();
-        }
-        if (chart3.chTable === DataB.keyActivity) {
-            chart3.reset();
-        }
-        if (chart4.chTable === DataB.keyActivity) {
-            chart4.reset();
-        }
+        chartsView.resetData(DataB.keyActivity);
         return;
     }
 
     function resetReadinessData() {
         ouraCloud.setDateConsidered();
         readinessTrend.fillData();
-        if (chart1.chTable === DataB.keyReadiness) {
-            chart1.reset();
-        }
-        if (chart2.chTable === DataB.keyReadiness) {
-            chart2.reset();
-        }
-        if (chart3.chTable === DataB.keyReadiness) {
-            chart3.reset();
-        }
-        if (chart4.chTable === DataB.keyReadiness) {
-            chart4.reset();
-        }
+        chartsView.resetData(DataB.keyReadiness);
         return;
     }
 
     function resetSleepData() {
         ouraCloud.setDateConsidered();
         sleepTrend.fillData();
-        if (chart1.chTable === DataB.keySleep) {
-            chart1.reset();
-        }
-        if (chart2.chTable === DataB.keySleep) {
-            chart2.reset();
-        }
-        if (chart3.chTable === DataB.keySleep) {
-            chart3.reset();
-        }
-        if (chart4.chTable === DataB.keySleep) {
-            chart4.reset();
-        }
-        return;
-    }
-
-    function selectColumn(chartId, barNr, firstDateTime) {
-        txtDate.summaryDate = new Date(firstDateTime + barNr*msDay);
-        if (chartId !== chart1.chartId) {
-            chart1.currentIndex = barNr;
-        }
-        chart1.positionViewAtIndex(barNr, ListView.Center);
-        if (chartId !== chart2.chartId) {
-            chart2.currentIndex = barNr;
-        }
-        chart2.positionViewAtIndex(barNr, ListView.Center);
-        if (chartId !== chart3.chartId) {
-            chart3.currentIndex = barNr;
-        }
-        chart3.positionViewAtIndex(barNr, ListView.Center);
-        if (chartId !== chart4.chartId) {
-            chart4.currentIndex = barNr;
-        }
-        chart4.positionViewAtIndex(barNr, ListView.Center);
-
-        activityTrend.fillData();
-        readinessTrend.fillData();
-        sleepTrend.fillData();
-
+        chartsView.resetData(DataB.keySleep);
         return;
     }
 
