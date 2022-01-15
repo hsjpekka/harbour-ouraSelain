@@ -13,7 +13,7 @@ Item {
                         (monthBar.height > weekBar.height?
                              monthBar.height : weekBar.height) //column.height
 
-    property string text
+    property string text // not used
 
     property int    average: 0
     property int    averageMonth: 0
@@ -91,26 +91,36 @@ Item {
             }
         }
 
-        Label {
-            id: yearValue
-            text: valueType === 0 ? averageYear : labelTxt
-            visible: false
+        Rectangle {
+            id: yearBg
+            height: yearValue.implicitHeight + 2*anchors.bottomMargin
+            width: yearValue.implicitWidth + Theme.paddingSmall
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 bottom: parent.top
                 bottomMargin: _vgap
             }
+            color: Theme.rgba(Theme.highlightDimmerColor, Theme.opacityHigh)
+            visible: false
 
-            property string labelTxt: ""
+            Label {
+                id: yearValue
+                text: valueType === 0 ? averageYear : labelTxt
+                anchors.centerIn: parent
+                color: Theme.highlightColor
+
+                property string labelTxt: ""
+
+            }
         }
 
         MouseArea {
             anchors.fill: parent
             propagateComposedEvents: true
             onClicked: {
-                yearValue.visible = !yearValue.visible
-                monthValue.visible = false
-                weekValue.visible = false
+                yearBg.visible = !yearBg.visible
+                monthBg.visible = false
+                weekBg.visible = false
             }
             onPressAndHold: {
                 mouse.accepted = false
@@ -141,25 +151,34 @@ Item {
             }
         }
 
-        Label {
-            id: monthValue
-            text: valueType === 0 ? averageMonth : labelTxt
-            visible: false
+        Rectangle {
+            id: monthBg
+            height: monthValue.height + 2*anchors.bottomMargin
+            width: monthValue.implicitWidth + Theme.paddingSmall
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 bottom: parent.top
                 bottomMargin: _vgap
             }
+            color: Theme.rgba(Theme.highlightDimmerColor, Theme.opacityHigh)
+            visible: false
 
-            property string labelTxt: ""
+            Label {
+                id: monthValue
+                text: valueType === 0 ? averageMonth : labelTxt
+                anchors.centerIn: parent
+                color: Theme.highlightColor
+
+                property string labelTxt: ""
+            }
         }
 
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                monthValue.visible = !monthValue.visible
-                yearValue.visible = false
-                weekValue.visible = false
+                monthBg.visible = !monthBg.visible
+                yearBg.visible = false
+                weekBg.visible = false
             }
         }
     }
@@ -187,9 +206,11 @@ Item {
             }
         }
 
-        Label {
-            id: weekValue
-            text: valueType === 0 ? averageWeek : labelTxt
+        Rectangle {
+            id: weekBg
+            height: weekValue.height + 2*anchors.bottomMargin
+            width: weekValue.implicitWidth + Theme.paddingSmall
+            color: Theme.rgba(Theme.highlightDimmerColor, Theme.opacityHigh)
             visible: false
             anchors {
                 horizontalCenter: parent.horizontalCenter
@@ -197,15 +218,22 @@ Item {
                 bottomMargin: _vgap
             }
 
-            property string labelTxt: ""
+            Label {
+                id: weekValue
+                text: valueType === 0 ? averageWeek : labelTxt
+                anchors.centerIn: parent
+                color: Theme.highlightColor
+
+                property string labelTxt: ""
+            }
         }
 
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                weekValue.visible = !weekValue.visible
-                yearValue.visible = false
-                monthValue.visible = false
+                weekBg.visible = !weekBg.visible
+                yearBg.visible = false
+                monthBg.visible = false
             }
         }
     }

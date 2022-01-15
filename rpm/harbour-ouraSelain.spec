@@ -9,8 +9,8 @@ Name:       harbour-ouraselain
 # << macros
 
 Summary:    Oura Cloud
-Version:    0.3
-Release:    1
+Version:    0.4
+Release:    2
 Group:      Qt/Qt
 License:    LICENSE
 URL:        https://github.com/hsjpekka/harbour-ouraselain
@@ -52,10 +52,10 @@ rm -rf %{buildroot}
 
 # >> install post
 if [ -d $HOME/.local/share/%{name}/%{name}]; then
-    if [ ! -d $HOME/.local/share/null.hsjpekka/%{name}]; then
-        mkdir $HOME/.local/share/null.hsjpekka/%{name}
-    fi
-    mv $HOME/.local/share/%{name}/%{name}/* $HOME/.local/share/null.hsjpekka/%{name}/
+if [ ! -d $HOME/.local/share/null.hsjpekka/%{name}]; then
+mkdir $HOME/.local/share/null.hsjpekka/%{name}
+fi
+mv $HOME/.local/share/%{name}/%{name}/* $HOME/.local/share/null.hsjpekka/%{name}/
 fi
 # << install post
 

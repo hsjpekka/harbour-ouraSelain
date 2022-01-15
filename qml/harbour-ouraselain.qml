@@ -21,8 +21,8 @@ ApplicationWindow
             firstDateToRead = setDatesToRead()
             readOldRecords(firstDateToRead)
         }
-        coverPage.currentChart = "ch1"
-        coverPage.title = initialPage.chartTitle(coverPage.currentChart)
+        //coverPage.currentChart = 0
+        //coverPage.title = DataB.getSetting("ch0" + DataB.keyChartTitle) //initialPage.chartTitle(coverPage.currentChart)
         if (personalAccessToken > "") {
             downloadOuraCloud()
         } else {
@@ -34,7 +34,7 @@ ApplicationWindow
     signal storedDataRead()
     signal settingsReady()
 
-    property int daysToRead: 14
+    property int daysToRead: 365//14
     property var db: null
     property int msDay: 24*60*60*1000
     property string personalAccessToken: ""
@@ -48,19 +48,21 @@ ApplicationWindow
 
     CoverPage {
         id: coverPage
-        currentChart: "ch1"
+        currentChart: 0
         onNextPressed: {
-            if (chStr === "ch1") {
-                coverPage.currentChart = "ch2"
-            } else if (chStr === "ch2") {
-                coverPage.currentChart = "ch3"
-            } else if (chStr === "ch3") {
-                coverPage.currentChart = "ch4"
-            } else if (chStr === "ch4") {
-                coverPage.currentChart = "ch1"
+            currentChart++
+            if (currentChart >= initialPage.chartCount) {
+                currentChart = 0
             }
-            coverPage.title = initialPage.chartTitle(coverPage.currentChart)
-            coverPage.value = initialPage.latestValue(coverPage.currentChart)
+
+            title = initialPage.chartTitle(currentChart)
+            value = initialPage.chartLatestValue(currentChart)
+        }
+        onStatusChanged: {
+            if (status === Cover.Active) {
+                title = initialPage.chartTitle(currentChart)
+                value = initialPage.chartLatestValue(currentChart)
+            }
         }
     }
 
@@ -106,11 +108,6 @@ ApplicationWindow
 
     RemorsePopup {
         id: remorse
-    }
-
-    function coverValue() {
-        var type, result;
-        return;
     }
 
     function downloadOuraCloud(){

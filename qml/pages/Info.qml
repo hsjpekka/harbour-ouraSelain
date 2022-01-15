@@ -25,6 +25,7 @@ Page {
             }
 
             LinkedLabel {
+                color: Theme.secondaryHighlightColor
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2*x
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -102,7 +103,7 @@ Page {
             }
 
             Label {
-                color: Theme.highlightColor
+                color: Theme.secondaryHighlightColor
                 text: qsTr("The value of the day sleep types column is the total sleeping time " +
                            "without the awake periods.")
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -115,7 +116,7 @@ Page {
             }
 
             Label {
-                color: Theme.highlightColor
+                color: Theme.secondaryHighlightColor
                 text: qsTr("The scores on the right hand side are average values over " +
                            "365, 30 or 7 days. The latest half finished day is not " +
                            "taken into account.")
@@ -129,7 +130,7 @@ Page {
             }
 
             Label {
-                color: Theme.highlightColor
+                color: Theme.secondaryHighlightColor
                 text: qsTr("The sign next to the score tells whether the score of the latest " +
                            "full day is larger than, smaller than, or equal to the average " +
                            "of the week. The color changes if the difference is big.")

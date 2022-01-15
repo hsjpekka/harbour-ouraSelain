@@ -261,7 +261,7 @@ Page {
                 width: parent.width - 2*x
                 orientation: ListView.Horizontal
                 maxValue: 4
-                showLabel: true
+                showLabel: sleepType.showLabelAlways
                 barWidth: minBarWidth > barTargetWidth ? minBarWidth : barTargetWidth
                 labelWidth: barWidth
                 labelFontSize: Theme.fontSizeSmall
@@ -349,7 +349,7 @@ Page {
                 width: parent.width - 2*x
                 orientation: ListView.Horizontal
                 maxValue: 50
-                showLabel: true
+                showLabel: hr5min.showLabelAlways
                 barWidth: 10
                 labelWidth: barWidth
                 labelFontSize: Theme.fontSizeSmall
@@ -429,7 +429,7 @@ Page {
                 width: parent.width - 2*x
                 orientation: ListView.Horizontal
                 maxValue: 120
-                showLabel: true
+                showLabel: var5min.showLabelAlways
                 barWidth: 10
                 labelWidth: barWidth
                 labelFontSize: Theme.fontSizeSmall

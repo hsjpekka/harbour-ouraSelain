@@ -165,6 +165,11 @@ Page {
                 plainText: qsTr("Get your token from %1. And copy it to the field below.").arg("https://cloud.ouraring.com/account/login?next=%2Fpersonal-access-tokens")
             }
 
+            Item {
+                height: Theme.paddingSmall
+                width: 1
+            }
+
             TextField {
                 id: tokenField
                 placeholderText: qsTr("for example: %1").arg("A3EDG66YA...")
@@ -190,7 +195,7 @@ Page {
             }
 
             Label {
-                color: Theme.highlightColor
+                color: Theme.secondaryHighlightColor
                 width: parent.width - 2*x
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 x: Theme.horizontalPageMargin
@@ -226,8 +231,6 @@ Page {
                 text: qsTr("Fetch old records")
                 anchors.horizontalCenter: parent.horizontalCenter
                 onClicked: {
-                    ouraCloud.setStartDate(dateButton.year, dateButton.month, dateButton.day)
-                    ouraCloud.downloadOuraCloud()
                     downloadLabel.visible = true
                     activityReady.ready = false
                     sleepReady.ready = false
@@ -235,6 +238,8 @@ Page {
                     bedtimesReady.ready = false
                     infoReady.ready = false
 
+                    ouraCloud.setStartDate(dateButton.year, dateButton.month, dateButton.day)
+                    ouraCloud.downloadOuraCloud()
                     // move to show the rotating circle
                     flickingArea.scrollToBottom()
 
@@ -252,7 +257,7 @@ Page {
             Item {
                 id: downloadLabel
                 width: parent.width - 2*x
-                height: dlIndicator.y + dlIndicator.height
+                height: dlLabel.height + dlIndicator.height + dlIndicator.anchors.topMargin
                 x: Theme.horizontalPageMargin
                 visible: false
 

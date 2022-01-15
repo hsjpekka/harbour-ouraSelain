@@ -61,10 +61,6 @@ Dialog {
                             txt: qsTr("sleep")
                             value: "sleep" //DataB.keySleep
                         }
-                        ListElement {
-                            txt: qsTr("hide chart")
-                            value: ""
-                        }
                     }
 
                     Repeater {

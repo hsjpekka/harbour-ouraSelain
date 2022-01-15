@@ -2,10 +2,21 @@ import QtQuick 2.0
 import Sailfish.Silica 1.0
 
 CoverBackground {
-    signal nextPressed(string chStr)
-    property string currentChart: ""
+    signal nextPressed(int chNr)
+    property int currentChart: 0
     property alias title: lbl.text
     property alias value: val.text
+
+    Label {
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            top: parent.top
+            topMargin: Theme.paddingLarge
+        }
+        text: "Oura"
+        horizontalAlignment: Text.AlignHCenter
+        font.pixelSize: Theme.fontSizeExtraLarge
+    }
 
     Label {
         id: lbl

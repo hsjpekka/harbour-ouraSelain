@@ -8,210 +8,7 @@ SilicaListView {
     height: orientation === ListView.Horizontal ? 3*Theme.fontSizeMedium : 4*Theme.fontSizeMedium
     width: parent.width
 
-    delegate: ListItem {
-        id: barItem
-        contentHeight: barChartView.orientation === ListView.Horizontal ?
-                    barChartView.height : (itemLabel.height > minItemWidth? itemLabel.height: minItemWidth)
-        width: barChartView.orientation === ListView.Horizontal ?
-                   ((showLabel && (labelWidth > minItemWidth))? labelWidth : minItemWidth) : parent.width
-        propagateComposedEvents: true
-
-        property real   barTop: barChartView.orientation === ListView.Horizontal ?
-                                    bValue*hscale : bValue*vscale
-        property real   bar2Top: barChartView.orientation === ListView.Horizontal ?
-                                    b2Value*hscale : b2Value*vscale
-        property real   bar3Top: barChartView.orientation === ListView.Horizontal ?
-                                    b3Value*hscale : b3Value*vscale
-        property real   bar4Top: barChartView.orientation === ListView.Horizontal ?
-                                    b4Value*hscale : b4Value*vscale
-        property string bLabel: barLabel
-        property real   bLength: barType === 0 ? barTop : 2
-        property real   b2Length: barType === 0 ? bar2Top : 2
-        property real   b3Length: barType === 0 ? bar3Top : 2
-        property real   b4Length: barType === 0 ? bar4Top : 2
-        property real   bValue: barValue
-        property real   b2Value: bar2Value
-        property real   b3Value: bar3Value
-        property real   b4Value: bar4Value
-        property real   relPos: arrayType === 0 ? 0.5 : 1/(2*nrSets)
-        property real   gap: Theme.paddingSmall
-        // bar height = barValue*scale
-        property real   hscale: (barChartView.height - itemLabel.height - gap)/maxValue
-        property string vlabel: valLabel
-        property real   vscale: (barChartView.width - labelWidth - gap)/maxValue
-        property alias  valueLblVisible: valueLabel.visible
-
-        onClicked: {
-            var i = barChartView.indexAt(mouseX+x,mouseY+y)
-            barSelected(i, bValue, bLabel)
-            if (showBarValue === 1 && currentIndex === i) {
-                currentIndex = -1
-            } else {
-                currentIndex = i
-            }
-            if (!showLabel) {
-                itemLabel.visible = !itemLabel.visible
-            }
-        }
-
-        onPressAndHold: {
-            var i = barChartView.indexAt(mouseX+x,mouseY+y)
-            barPressAndHold(i, bValue, bLabel)
-            mouse.accepted = false
-        }
-
-        Rectangle {
-            id: chartBar
-            height: barChartView.orientation === ListView.Horizontal ? barItem.bLength : barWidth
-            width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.bLength
-            color: barColor
-            opacity: 1.0
-            y: barChartView.orientation === ListView.Horizontal ?
-                   itemLabel.y - barItem.gap  - barItem.barTop:
-                   barItem.relPos*(parent.contentHeight - height)
-            x: barChartView.orientation === ListView.Horizontal ?
-                   barItem.relPos*(parent.width - width): itemLabel.width + barItem.gap
-                   + barItem.barTop - width
-        }
-
-        Rectangle {
-            id: chartBar2
-            height: barChartView.orientation === ListView.Horizontal ? barItem.b2Length : barWidth
-            width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.b2Length
-            color: bar2Color
-            opacity: 1.0
-            visible: nrSets > 1
-            y: barChartView.orientation === ListView.Horizontal ?
-                   (arrayType === 0 ? chartBar.y - barItem.bar2Top :
-                                      itemLabel.y - barItem.gap - barItem.bar2Top):
-                   (arrayType === 0 ? chartBar.y : chartBar.y + chartBar.height)
-            x: barChartView.orientation === ListView.Horizontal ?
-                   (arrayType === 0 ? chartBar.x : chartBar.x + chartBar.width) :
-                   stackX + barItem.bar2Top - width
-            property int stackX: arrayType === 0 ? chartBar.x + chartBar.width :
-                                                   itemLabel.width + barItem.gap
-        }
-
-        Rectangle {
-            id: chartBar3
-            height: barChartView.orientation === ListView.Horizontal ? barItem.b3Length : barWidth
-            width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.b3Length
-            color: bar3Color
-            opacity: 1.0
-            visible: nrSets > 2
-            y: barChartView.orientation === ListView.Horizontal ?
-                   (arrayType === 0 ? chartBar2.y - barItem.bar3Top :
-                                      itemLabel.y - barItem.gap - barItem.bar3Top):
-                   (arrayType === 0 ? chartBar2.y : chartBar2.y + chartBar2.height)
-            x: barChartView.orientation === ListView.Horizontal ?
-                   (arrayType === 0 ? chartBar2.x : chartBar2.x + chartBar2.width) :
-                   stackX + barItem.bar3Top - width
-            property int stackX: arrayType === 0 ? chartBar2.x + chartBar2.width :
-                                                   itemLabel.width + barItem.gap
-        }
-
-        Rectangle {
-            id: chartBar4
-            height: barChartView.orientation === ListView.Horizontal ? barItem.b4Length : barWidth
-            width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.b4Length
-            color: bar4Color
-            opacity: 1.0
-            visible: nrSets > 3
-            y: barChartView.orientation === ListView.Horizontal ?
-                   (arrayType === 0 ? chartBar3.y - barItem.bar4Top :
-                                      itemLabel.y - barItem.gap - barItem.bar4Top):
-                   (arrayType === 0 ? chartBar3.y : chartBar3.y + chartBar3.height)
-            x: barChartView.orientation === ListView.Horizontal ?
-                   (arrayType === 0 ? chartBar3.x : chartBar3.x + chartBar3.width) :
-                   stackX + barItem.bar4Top - width
-            property int stackX: arrayType === 0 ? chartBar3.x + chartBar3.width :
-                                                   itemLabel.width + barItem.gap
-        }
-
-        Rectangle {
-            id: localMaxBar
-            height: barChartView.orientation === ListView.Horizontal ? 2 : barWidth + Theme.paddingSmall
-            width: barChartView.orientation === ListView.Horizontal ? barWidth + Theme.paddingSmall : 2
-            color: maxMinColor
-            visible: showVariance === 1 || showVariance === 3
-            y: barChartView.orientation === ListView.Horizontal ?
-                   itemLabel.y - barItem.gap  - barItem.hscale*localMax:
-                   0.5*(parent.contentHeight - height)
-            x: barChartView.orientation === ListView.Horizontal ?
-                   0.5*(parent.width - width) : itemLabel.x + itemLabel.width +
-                   barItem.gap + barItem.vscale*localMax
-            z: 1
-        }
-
-        Rectangle {
-            id: localMinBar
-            height: barChartView.orientation === ListView.Horizontal ? 1 : barWidth + Theme.paddingSmall
-            width: barChartView.orientation === ListView.Horizontal ? barWidth + Theme.paddingSmall : 1
-            color: maxMinColor
-            visible: showVariance === 2 || showVariance === 3
-            y: barChartView.orientation === ListView.Horizontal ?
-                   itemLabel.y - barItem.gap  - barItem.hscale*localMin:
-                   0.5*(parent.contentHeight - height)
-            x: barChartView.orientation === ListView.Horizontal ?
-                   0.5*(parent.width - width) : itemLabel.x + itemLabel.width +
-                   barItem.gap + barItem.vscale*localMin
-            z: 1
-        }
-
-        Label {
-            id: itemLabel
-            text: barItem.bLabel
-            font.pixelSize: labelFontSize
-            horizontalAlignment: barChartView.orientation === ListView.Horizontal?
-                                     Text.AlignHCenter : Text.AlignRight
-            x: barChartView.orientation === ListView.Horizontal ?
-                   0.5*(parent.width - width) : 0
-            y: barChartView.orientation === ListView.Horizontal ?
-                   parent.height - height : 0.5*(parent.contentHeight - height)
-
-            width: barChartView.orientation === ListView.Horizontal? parent.width : labelWidth
-            color: labelColor
-            visible: showLabel
-        } //
-
-        Label {
-            id: valueLabel
-            //text: showBarValue === 2 ? barItem.bValue : ""
-            text: setValueLabel? barItem.vlabel : barItem.bValue
-            visible: showBarValue === 2? true : (showBarValue === 1 ?
-                                                     barItem.ListView.isCurrentItem : false)
-            font.pixelSize: labelFontSize
-            font.bold: inFront
-            horizontalAlignment: barChartView.orientation === ListView.Horizontal?
-                                     Text.AlignHCenter : Text.AlignLeft
-            x: barChartView.orientation === ListView.Horizontal ?
-                   0.5*(parent.width - width) : defX
-                   //(defX > parent.width ? parent.width - width : defX)
-                   //chartBar.x + chartBar.width + Theme.paddingSmall
-            y: barChartView.orientation === ListView.Horizontal ? // chartBar.y - height - Theme.paddingSmall
-                    //defY : 0.5*(parent.contentHeight - height)
-                    (inFront ? 0 : defY) : 0.5*(parent.contentHeight - height)
-            z: 1
-            color: labelColor
-            width: contentWidth //barChartView.orientation === ListView.Horizontal? parent.width : labelWidth
-
-            property int defX: chartBar.x + chartBar.width + Theme.paddingSmall
-            property int defY: chartBar4.y - height - Theme.paddingSmall
-            property bool inFront: valueLabelOutside? false: (defY < -valueLabelMinY)
-
-            //*
-            Rectangle {
-                id: tausta
-                anchors.fill: parent
-                color: Theme.highlightDimmerColor
-                opacity: Theme.opacityHigh
-                //visible: parent.inFront ? (valueLabel.text > "") : false
-                visible: true //parent.inFront ? parent.visible : false
-                z:-1
-            }
-            // */
-        }
-    }//listitem
+    delegate: delegateItem
 
     section {
         property: "group"
@@ -322,21 +119,230 @@ SilicaListView {
     property bool   setValueLabel: false
     property int    showBarValue: 1 // 0 - no, 1 - when clicked, 2 - always
     property int    showVariance: 0 // 0 - no, 1 - max, 2 - min,  3 - max and min -- only with a single set
-    property bool   showLabel: true
+    property int    showLabel: 2 // 0 - no, 1 - when clicked, 2 - always
     property bool   valueLabelOutside: false
     property int    valueLabelMinY: labelFontSize + Theme.paddingSmall
-    //property real   selectedBarHeight: 0
-    //property string selectedBarLabel: ""
-    property int ed: -1
 
     readonly property var validDataElements: ["group", "barValue",
         "barColor", "barLabel", "bar2Value", "bar2Color", "bar3Value",
         "bar3Color", "bar4Value", "bar4Color", "localMax", "localMin",
         "maxMinColor", "valLabel"]
+    readonly property int showLabelNever: 0
+    readonly property int showLabelOnClick: 0
+    readonly property int showLabelAlways: 2
 
-    signal barSelected(int barNr, real barValue, string barLabel)
+    signal barSelected(int barNr, real barValue, string barLabel, real xView, real yView)
     signal barPressAndHold(int barNr, real barValue, string barLabel)
     signal dataCleared()
+
+    Component {
+        id: delegateItem
+        ListItem {
+            id: barItem
+            contentHeight: barChartView.orientation === ListView.Horizontal ?
+                        barChartView.height : (itemLabel.height > minItemWidth? itemLabel.height: minItemWidth)
+            width: barChartView.orientation === ListView.Horizontal ?
+                       ((showLabel === 0 && labelWidth > minItemWidth)? labelWidth : minItemWidth) : parent.width
+            propagateComposedEvents: true
+            z: ListView.isCurrentItem? 1 : 0
+
+            property real   barTop: barChartView.orientation === ListView.Horizontal ?
+                                        bValue*hscale : bValue*vscale
+            property real   bar2Top: barChartView.orientation === ListView.Horizontal ?
+                                        b2Value*hscale : b2Value*vscale
+            property real   bar3Top: barChartView.orientation === ListView.Horizontal ?
+                                        b3Value*hscale : b3Value*vscale
+            property real   bar4Top: barChartView.orientation === ListView.Horizontal ?
+                                        b4Value*hscale : b4Value*vscale
+            property string bLabel: barLabel
+            property real   bLength: barType === 0 ? barTop : 2
+            property real   b2Length: barType === 0 ? bar2Top : 2
+            property real   b3Length: barType === 0 ? bar3Top : 2
+            property real   b4Length: barType === 0 ? bar4Top : 2
+            property real   bValue: barValue
+            property real   b2Value: bar2Value
+            property real   b3Value: bar3Value
+            property real   b4Value: bar4Value
+            property real   relPos: arrayType === 0 ? 0.5 : 1/(2*nrSets)
+            property real   gap: Theme.paddingSmall
+            property real   hscale: (barChartView.height - itemLabel.height - gap)/maxValue
+            property string vlabel: valLabel
+            property real   vscale: (barChartView.width - labelWidth - gap)/maxValue
+            property alias  valueLblVisible: valueBg.visible
+
+            onClicked: {
+                var i, xView, yView
+                i = barChartView.indexAt(x + 0.5*width, y + 0.5*height)
+                if (showBarValue === 1 && currentIndex === i) {
+                    currentIndex = -1
+                } else {
+                    currentIndex = i
+                }
+                xView = x - barChartView.contentX + 0.5*width // from bar center to visible area top left corner
+                yView = y - barChartView.contentY + 0.5*height
+                barSelected(i, bValue, bLabel, xView, yView) // signal barSelected(int barNr, real barValue, string barLabel, real xMouse, real yMouse)
+            }
+
+            onPressAndHold: {
+                var i = barChartView.indexAt(mouseX+x,mouseY+y)
+                barPressAndHold(i, bValue, bLabel)
+                mouse.accepted = false
+            }
+
+            Rectangle {
+                id: chartBar
+                height: barChartView.orientation === ListView.Horizontal ? barItem.bLength : barWidth
+                width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.bLength
+                color: barColor
+                opacity: 1.0
+                y: barChartView.orientation === ListView.Horizontal ?
+                       itemLabel.y - barItem.gap  - barItem.barTop:
+                       barItem.relPos*(parent.contentHeight - height)
+                x: barChartView.orientation === ListView.Horizontal ?
+                       barItem.relPos*(parent.width - width): itemLabel.width + barItem.gap
+                       + barItem.barTop - width
+            }
+
+            Rectangle {
+                id: chartBar2
+                height: barChartView.orientation === ListView.Horizontal ? barItem.b2Length : barWidth
+                width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.b2Length
+                color: bar2Color
+                opacity: 1.0
+                visible: nrSets > 1
+                y: barChartView.orientation === ListView.Horizontal ?
+                       (arrayType === 0 ? chartBar.y - barItem.bar2Top :
+                                          itemLabel.y - barItem.gap - barItem.bar2Top):
+                       (arrayType === 0 ? chartBar.y : chartBar.y + chartBar.height)
+                x: barChartView.orientation === ListView.Horizontal ?
+                       (arrayType === 0 ? chartBar.x : chartBar.x + chartBar.width) :
+                       stackX + barItem.bar2Top - width
+                property int stackX: arrayType === 0 ? chartBar.x + chartBar.width :
+                                                       itemLabel.width + barItem.gap
+            }
+
+            Rectangle {
+                id: chartBar3
+                height: barChartView.orientation === ListView.Horizontal ? barItem.b3Length : barWidth
+                width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.b3Length
+                color: bar3Color
+                opacity: 1.0
+                visible: nrSets > 2
+                y: barChartView.orientation === ListView.Horizontal ?
+                       (arrayType === 0 ? chartBar2.y - barItem.bar3Top :
+                                          itemLabel.y - barItem.gap - barItem.bar3Top):
+                       (arrayType === 0 ? chartBar2.y : chartBar2.y + chartBar2.height)
+                x: barChartView.orientation === ListView.Horizontal ?
+                       (arrayType === 0 ? chartBar2.x : chartBar2.x + chartBar2.width) :
+                       stackX + barItem.bar3Top - width
+                property int stackX: arrayType === 0 ? chartBar2.x + chartBar2.width :
+                                                       itemLabel.width + barItem.gap
+            }
+
+            Rectangle {
+                id: chartBar4
+                height: barChartView.orientation === ListView.Horizontal ? barItem.b4Length : barWidth
+                width: barChartView.orientation === ListView.Horizontal ? barWidth : barItem.b4Length
+                color: bar4Color
+                opacity: 1.0
+                visible: nrSets > 3
+                y: barChartView.orientation === ListView.Horizontal ?
+                       (arrayType === 0 ? chartBar3.y - barItem.bar4Top :
+                                          itemLabel.y - barItem.gap - barItem.bar4Top):
+                       (arrayType === 0 ? chartBar3.y : chartBar3.y + chartBar3.height)
+                x: barChartView.orientation === ListView.Horizontal ?
+                       (arrayType === 0 ? chartBar3.x : chartBar3.x + chartBar3.width) :
+                       stackX + barItem.bar4Top - width
+                property int stackX: arrayType === 0 ? chartBar3.x + chartBar3.width :
+                                                       itemLabel.width + barItem.gap
+            }
+
+            Rectangle {
+                id: localMaxBar
+                height: barChartView.orientation === ListView.Horizontal ? 2 : barWidth + Theme.paddingSmall
+                width: barChartView.orientation === ListView.Horizontal ? barWidth + Theme.paddingSmall : 2
+                color: maxMinColor
+                visible: showVariance === 1 || showVariance === 3
+                y: barChartView.orientation === ListView.Horizontal ?
+                       itemLabel.y - barItem.gap  - barItem.hscale*localMax:
+                       0.5*(parent.contentHeight - height)
+                x: barChartView.orientation === ListView.Horizontal ?
+                       0.5*(parent.width - width) : itemLabel.x + itemLabel.width +
+                       barItem.gap + barItem.vscale*localMax
+                z: 1
+            }
+
+            Rectangle {
+                id: localMinBar
+                height: barChartView.orientation === ListView.Horizontal ? 1 : barWidth + Theme.paddingSmall
+                width: barChartView.orientation === ListView.Horizontal ? barWidth + Theme.paddingSmall : 1
+                color: maxMinColor
+                visible: showVariance === 2 || showVariance === 3
+                y: barChartView.orientation === ListView.Horizontal ?
+                       itemLabel.y - barItem.gap  - barItem.hscale*localMin:
+                       0.5*(parent.contentHeight - height)
+                x: barChartView.orientation === ListView.Horizontal ?
+                       0.5*(parent.width - width) : itemLabel.x + itemLabel.width +
+                       barItem.gap + barItem.vscale*localMin
+                z: 1
+            }
+
+            Label {
+                id: itemLabel
+                text: barItem.bLabel
+                font.pixelSize: labelFontSize
+                horizontalAlignment: barChartView.orientation === ListView.Horizontal?
+                                         Text.AlignHCenter : Text.AlignRight
+                x: barChartView.orientation === ListView.Horizontal ?
+                       0.5*(parent.width - width) : 0
+                y: barChartView.orientation === ListView.Horizontal ?
+                       parent.height - height : 0.5*(parent.contentHeight - height)
+
+                width: barChartView.orientation === ListView.Horizontal? parent.width : labelWidth
+                color: labelColor
+                visible: showLabel === 2? true : showLabel === 1 ?
+                                barItem.ListView.isCurrentItem : false
+            } //
+
+            Rectangle {
+                id: valueBg
+                //anchors.fill: parent
+                color: Theme.rgba(Theme.highlightDimmerColor, Theme.opacityHigh)
+                //visible: parent.inFront ? (valueLabel.text > "") : false
+                visible: showBarValue === 2? true : showBarValue === 1 ?
+                                barItem.ListView.isCurrentItem : false
+                width: valueLabel.width + Theme.paddingSmall
+                height: valueLabel.height + Theme.paddingSmall
+                x: barChartView.orientation === ListView.Horizontal ?
+                       0.5*(parent.width - width) : defX
+                       //(defX > parent.width ? parent.width - width : defX)
+                       //chartBar.x + chartBar.width + Theme.paddingSmall
+                y: barChartView.orientation === ListView.Horizontal ? // chartBar.y - height - Theme.paddingSmall
+                        //defY : 0.5*(parent.contentHeight - height)
+                        (inFront ? 0 : defY) : 0.5*(parent.contentHeight - height)
+
+                property int defX: chartBar.x + chartBar.width + Theme.paddingSmall
+                property int defY: chartBar4.y - height - Theme.paddingSmall
+                property bool inFront: valueLabelOutside? false: (defY < -valueLabelMinY)
+
+                Label {
+                    id: valueLabel
+                    anchors.centerIn: parent
+                    //text: showBarValue === 2 ? barItem.bValue : ""
+                    text: setValueLabel? barItem.vlabel : barItem.bValue
+                    //visible: showBarValue === 2? true : showBarValue === 1 ?
+                    //                barItem.ListView.isCurrentItem : false
+                    font.pixelSize: labelFontSize
+                    font.bold: parent.inFront
+                    horizontalAlignment: barChartView.orientation === ListView.Horizontal?
+                                             Text.AlignHCenter : Text.AlignLeft
+                    color: labelColor
+                    width: contentWidth //barChartView.orientation === ListView.Horizontal? parent.width : labelWidth
+                }
+            }
+
+        }//listitem
+    }
 
     function addData(sct, val, clr, lbl, val2, clr2, val3, clr3, val4, clr4, vlbl) {
         // {"barValue", "barColor", "barLabel", "group", "type"}

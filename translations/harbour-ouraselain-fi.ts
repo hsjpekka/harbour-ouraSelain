@@ -122,24 +122,32 @@
 <context>
     <name>HistoryChart</name>
     <message>
-        <source>settings</source>
-        <translation type="unfinished">asetukset</translation>
-    </message>
-    <message>
-        <source>dense layout</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>sparce layout</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>%1, wk %2</source>
-        <translation type="unfinished"></translation>
+        <translation>%1, vko %2</translation>
     </message>
     <message>
         <source>score</source>
-        <translation type="unfinished">tulos</translation>
+        <translation>tulos</translation>
+    </message>
+    <message>
+        <source>sleep</source>
+        <translation>uni</translation>
+    </message>
+    <message>
+        <source>settings</source>
+        <translation>asetukset</translation>
+    </message>
+    <message>
+        <source>dense layout</source>
+        <translation>tiivis näkymä</translation>
+    </message>
+    <message>
+        <source>sparce layout</source>
+        <translation>tilava näkymä</translation>
+    </message>
+    <message>
+        <source>remove graph</source>
+        <translation>poista kuvaaja</translation>
     </message>
 </context>
 <context>
@@ -239,18 +247,6 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
         <translation>uni</translation>
     </message>
     <message>
-        <source>active calories</source>
-        <translation>aktiiviset kalorit</translation>
-    </message>
-    <message>
-        <source>sleep levels</source>
-        <translation>unen tasot</translation>
-    </message>
-    <message>
-        <source>sleep time hearth beat rate</source>
-        <translation>syke nukkuessa</translation>
-    </message>
-    <message>
         <source>About</source>
         <translation>tietoja</translation>
     </message>
@@ -265,6 +261,18 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
     <message>
         <source>date</source>
         <translation>päivä</translation>
+    </message>
+    <message>
+        <source>add new chart</source>
+        <translation>lisää uusi kuvaaja</translation>
+    </message>
+    <message>
+        <source>long press to add a chart</source>
+        <translation>paina pitkään lisätäksesi kuvaajan</translation>
+    </message>
+    <message>
+        <source>chart %1 not defined</source>
+        <translation>kuvaajaa %1 ei määritelty</translation>
     </message>
 </context>
 <context>
@@ -711,19 +719,15 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
     </message>
     <message>
         <source>activity</source>
-        <translation type="unfinished"></translation>
+        <translation>toimeliaisuus</translation>
     </message>
     <message>
         <source>readiness</source>
-        <translation type="unfinished">valmius</translation>
+        <translation>valmius</translation>
     </message>
     <message>
         <source>sleep</source>
-        <translation type="unfinished">uni</translation>
-    </message>
-    <message>
-        <source>hide chart</source>
-        <translation type="unfinished"></translation>
+        <translation>uni</translation>
     </message>
 </context>
 <context>

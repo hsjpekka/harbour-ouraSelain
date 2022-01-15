@@ -13,42 +13,12 @@ Page {
     signal openSettings()
 
     property alias chartCount: chartsView.count
-
-    Connections {
-        target: ouraCloud
-        onFinishedActivity: {
-            if (_reloaded) {
-                resetActivityData()
-            } else {
-                cloudActivityData()
-            }
-        }
-        onFinishedBedTimes: {
-            cloudBedTimeData()
-        }
-        onFinishedReadiness: {
-            if (_reloaded) {
-                resetReadinessData()
-            } else {
-                cloudReadinessData()
-            }
-        }
-        onFinishedSleep: {
-            if (_reloaded) {
-                resetSleepData()
-            } else {
-                cloudSleepData()
-            }
-        }
-    }
+    property bool  _manualAddition: false
 
     Connections {
         target: applicationWindow
-        onStoredDataRead: {
-            chartsView.oldData()
-        }
         onSettingsReady: {
-            setUpPage()
+            chartsView.setUpCharts()
         }
     }
 
@@ -58,12 +28,15 @@ Page {
         width: parent.width
         header: trends
         footer: ListItem {
-            contentHeight: footerTxt.height
+            width: parent.width
+            contentHeight: footerTxt.height + 2*Theme.paddingMedium
             menu: ContextMenu {
                 MenuItem {
                     text: qsTr("add new chart")
                     onClicked: {
+                        _manualAddition = true;
                         chartsList.add(1);
+                        DataB.storeSettings(DataB.keyNrCharts, chartsList.count)
                     }
                 }
             }
@@ -72,26 +45,49 @@ Page {
                 id: footerTxt
                 text: qsTr("long press to add a chart")
                 color: Theme.secondaryColor
-                visible: !column.visible
-                x: Theme.horizontalPageMargin
+                anchors.centerIn: parent
             }
         }
-
         delegate: chartDelegate
         model: ListModel {
             id: chartsList
 
-            function add(totalCount) {
-                var i = 0, N;
-                N = totalCount - count;
+            function add(amount) {
+                var i = count, N;
+                N = amount*1.0 + count;
                 while (i < N) {
-                    append({chartNr: i, chartTable: "", title: "",
-                               mainValue: "" })
+                    append({chartNr: i, chTable: "", chTitle: "", chMainValue: "" });
                     i++;
                 }
                 return i;
             }
+
+            function modify(i, tbl, txt, val) {
+                if (i >= 0 && i < count) {
+                    if (tbl) {
+                        set(i, {chTable: tbl});
+                    }
+                    if (txt) {
+                        set(i, {chTitle: txt});
+                    }
+                    if (val) {
+                        set(i, {chMainValue: val});
+                    }
+                }
+                return;
+            }
+
         }
+
+        property int chartInitializing: 0
+        property real factor: 1.1 // limit for highlighting trends
+        property date summaryDate: new Date(new Date().getTime() - 27*60*60*1000) // show summaries of yesterday
+        property int timeScale: 0
+        property int selectedBar: -1
+        property int xDist: 0
+
+        signal summaryDateModified()
+        signal cloudReloaded()
 
         PullDownMenu {
             MenuItem {
@@ -136,9 +132,8 @@ Page {
             MenuItem {
                 text: qsTr("Settings")
                 onClicked: {
-                    var subPage = pageStack.push(Qt.resolvedUrl("Settings.qml"), {
-                                                         "token": personalAccessToken
-                                                     })
+                    var subPage = pageContainer.push(Qt.resolvedUrl("Settings.qml"),
+                                                 { "token": personalAccessToken })
                     subPage.setToken.connect(function () {
                         var msg, newTkn = subPage.token
                         if (newTkn === "") {
@@ -155,7 +150,7 @@ Page {
                         })
                     })
                     subPage.cloudReloaded.connect(function () {
-                        _reloaded = true;
+                        chartsView.cloudReloaded();
                     })
                 }
             }
@@ -169,374 +164,311 @@ Page {
 
         VerticalScrollDecorator {}
 
-        function changeTimeScales(chartTimeScale) {
-            var i = 0;
-            while (i < count) {
-                model.get(i).changeTimeScale(chartTimeScale);
-                i++;
+        function changeTimeScale() { // 0 - days grouped by week, 1 - days grouped by month
+            if (timeScale > 1) {
+                timeScale = 0;
+            } else {
+                timeScale++;
             }
-            return;
+            storeListParameters(selectedBar, timeScale);
+            return timeScale;
         }
 
-        function latestItem(chartId) {
-            var result, chart, i;
+        function chartChanged(tb0, typ0, val0, low0, hgh0,
+                              tb1, typ1, val1, low1, hgh1) {
+            var result = false;
+            if (tb1 === undefined || typ1 === undefined || val1 === undefined) {
+                result = false;
+            } else if (tb0 !== tb1 || typ0 !== typ1) {
+                result = true;
+            } else if (typ1 === DataB.chartTypeSleep) {
+                result = false;
+            } else if (val0 !== val1) {
+                result = true;
+            } else if (typ1 === DataB.chartTypeMin && low0 !== low1) {
+                result = true;
+            } else if (typ1 === DataB.chartTypeMaxmin &&
+                       (low0 !== low1 || hgh0 !== hgh1)) {
+                result = true;
+            }
+            return result;
+        }
 
-            if (chartId < count) {
-                chart = model.get(chartId);
-                if (chart.valuesList.count > 1) {
-                    i = chart.valuesList.count - 2;
-                    result = chart.valuesList.get(valuesList.count - 2);
-                } else if (chart.valuesList.count === 1) {
-                    result = chart.valuesList.get(0);
-                }
+        function chartItem(chartId) {
+            var result;
+
+            if (chartId < chartsView.count) {
+                result = model.get(chartId);
             }
 
             return result;
         }
 
-        function latestType(chartId) {
+        function chartLatestValue(chartId) {
             var result;
 
-            if (chartId < count) {
-                result = model.get(chartId).chType;
+            if (chartId < chartsView.count) {
+                result = chartItem(chartId).chMainValue;
             }
 
             return result;
         }
 
-        function latestValue(chartId) {
+        function chartTitle(chartId) {
             var result;
 
-            if (chartId < count) {
-                result = model.get(chartId).latestValue;
+            if (chartId < chartsView.count) {
+                result = chartItem(chartId).chTitle;
             }
 
-            return;
+            return result;
         }
 
-        function newData(dataType) {
+        function selectColumn(chartNr, barNr, firstDateTime, xMove) {
             var chart, i=0;
 
-            while (i < count) {
-                chart = model.get(i);
-                if (chart.chTable === dataType) {
-                    chart.newData();
-                    chart.fillData();
-                }
-            }
+            summaryDate = new Date(firstDateTime + barNr*msDay);
+            xDist = xMove;
+            selectedBar = barNr;
 
             return;
         }
 
-        function oldData() {
-            var i=0;
+        function setUpCharts() {
+            var chart, chartId, i=0, nrCharts=0;
 
-            while (i < count) {
-                model.get(i).oldData();
-                i++;
-            }
+            timeScale = DataB.getSetting(DataB.keyChartTimeScale, timeScale);
+            nrCharts = DataB.getSetting(DataB.keyNrCharts, 1)*1.0;
 
-            return;
-        }
-
-        function resetData(dataType) {
-            var chart, i=0;
-            while (i < count) {
-                chart = model.get(i);
-                if (chart.chTable === dataType) {
-                    chart.reset();
-                }
-            }
-            return;
-        }
-
-        function selectColumn(chartId, barNr, firstDateTime) {
-            var chart, i=0;
-
-            txtDate.summaryDate = new Date(firstDateTime + barNr*msDay);
-
-            while(i < count) {
-                if (i !== chartId) {
-                    chart = model.get(i);
-                    chart.currentIndex = barNr;
-                    chart.positionViewAtIndex(barNr, ListView.Center);
-                }
-                i++;
-            }
-
-            activityTrend.fillData();
-            readinessTrend.fillData();
-            sleepTrend.fillData();
+            model.add(nrCharts);
 
             return;
         }
-
-        function setUpPage() {
-            var i=0;
-            while(i < count) {
-                model.get(i).setUpChart();
-                i++;
-            }
-        }
-
     }
 
     Component {
         id: trends
         Item {
+            id: summaryRow
+            height: col.height
             width: page.width
 
-            PageHeader {
-                title: qsTr("Summary")
+            property bool dateLoop: false
+
+            Connections {
+                target: ouraCloud
+                onFinishedActivity: {
+                    ouraCloud.setDateConsidered();
+                    activityTrend.fillData();
+                }
+                onFinishedBedTimes: {
+                    //ouraCloud.setDateConsidered();
+                    //_refreshedBedTimes++;
+                }
+                onFinishedReadiness: {
+                    ouraCloud.setDateConsidered();
+                    readinessTrend.fillData();
+                }
+                onFinishedSleep: {
+                    ouraCloud.setDateConsidered();
+                    sleepTrend.fillData();
+                }
             }
 
-            Item {
-                id: scoreRow
-                width: parent.width - 2*x
-                height: txtDate.height + activityTrend.height
-                x: Theme.horizontalPageMargin
-
-                readonly property string scoreStr: "score"
-
-                ValueButton {
-                    id: txtDate
-                    label: qsTr("date")
-                    value: summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
-                    y: 0
-
-                    property date summaryDate: new Date(_dateNow.getTime() - 24*60*60*1000)
-
-                    onClicked: {
-                        var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
-                                                        "date": summaryDate } )
-                        dialog.accepted.connect( function() {
-                            summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 11, 59, 59, 999)
-                            activityTrend.fillData();
-                            sleepTrend.fillData();
-                            readinessTrend.fillData();
-                            chart1.selectDate(summaryDate);
-                            chart2.selectDate(summaryDate);
-                            chart3.selectDate(summaryDate);
-                            chart4.selectDate(summaryDate);
-                        } )
-                    }
-                    onSummaryDateChanged: {
-                        txtDate.value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
-                    }
-                }
-
-                TrendLabel {
-                    id: activityTrend
-                    text: qsTr("activity")
-                    layout: layCompact
-                    score: 0
-                    isValid: false
-                    anchors.left: parent.left
-                    anchors.bottom: parent.bottom //y: txtDate.height + Theme.paddingSmall
-
-                    function fillData() {
-                        var val;
-                        ouraCloud.setDateConsidered(txtDate.summaryDate);
-                        average = ouraCloud.average(DataB.keyActivity, scoreRow.scoreStr); // defaults to previous 7 days
-                        val = ouraCloud.value(DataB.keyActivity, scoreRow.scoreStr); // defaults to yesterday
-                        if (val === "-")
-                            isValid = false
-                        else {
-                            isValid = true;
-                            score = val*1.0;
-                        }
-                    }
-                }
-                TrendLabel {
-                    id: readinessTrend
-                    text: qsTr("readiness")
-                    layout: layCompact
-                    score: 0
-                    isValid: false
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom //y: parent.height - height//anchors.bottom: parent.bottom
-
-                    function fillData() {
-                        var val;
-                        ouraCloud.setDateConsidered(txtDate.summaryDate);
-                        average = ouraCloud.average(DataB.keyReadiness, scoreRow.scoreStr); // defaults to previous 7 days
-                        val = ouraCloud.value(DataB.keyReadiness, scoreRow.scoreStr); // defaults to yesterday
-                        if (val === "-")
-                            isValid = false
-                        else {
-                            isValid = true;
-                            score = val*1.0;
-                        }
-                    }
-                }
-                TrendLabel {
-                    id: sleepTrend
-                    text: qsTr("sleep")
-                    layout: layCompact
-                    score: 0
-                    isValid: false
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom //y: parent.height - height//anchors.bottom: parent.bottom
-
-                    function fillData() {
-                        var val;
-                        ouraCloud.setDateConsidered(txtDate.summaryDate);
-                        average = ouraCloud.average(DataB.keySleep, scoreRow.scoreStr); // defaults to previous 7 days
-                        val = ouraCloud.value(DataB.keySleep, scoreRow.scoreStr); // defaults to yesterday
-                        if (val === "-")
-                            isValid = false
-                        else {
-                            isValid = true;
-                            score = val*1.0;
-                        }
+            Connections {
+                target: chartsView
+                onSummaryDateChanged: {
+                    if (summaryRow.dateLoop) {
+                        summaryRow.dateLoop = false
+                    } else {
+                        txtDate.value = chartsView.summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
+                        activityTrend.fillData();
+                        readinessTrend.fillData();
+                        sleepTrend.fillData();
                     }
                 }
             }
 
+            Column {
+                id: col
+                width: parent.width
+
+                PageHeader {
+                    title: qsTr("Summary")
+                }
+
+                Item {
+                    id: scoreRow
+                    width: parent.width - 2*x
+                    height: txtDate.height + activityTrend.height
+                    x: Theme.horizontalPageMargin
+
+                    readonly property string scoreStr: "score"
+
+                    ValueButton {
+                        id: txtDate
+                        label: qsTr("date")
+                        value: chartsView.summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
+                        y: 0
+
+                        //property date summaryDate: new Date(new Date().getTime() - 27*60*60*1000) // 27 h ago
+
+                        onClicked: {
+                            var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
+                                                            "date": chartsView.summaryDate } )
+                            dialog.accepted.connect( function() {
+                                summaryRow.dateLoop = true;
+                                chartsView.summaryDate = new Date(dialog.year, dialog.month-1, dialog.day, 11, 59, 59, 999)
+                                chartsView.summaryDateModified()
+                                activityTrend.fillData();
+                                sleepTrend.fillData();
+                                readinessTrend.fillData();
+                                //chart1.selectDate(summaryDate);
+                                //chart2.selectDate(summaryDate);
+                                //chart3.selectDate(summaryDate);
+                                //chart4.selectDate(summaryDate);
+                            } )
+                        }
+                        //onSummaryDateChanged: {
+                        //    txtDate.value = summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
+                        //}
+                    }
+
+                    TrendLabel {
+                        id: activityTrend
+                        text: qsTr("activity")
+                        //layout: layCompact
+                        score: 0
+                        isValid: false
+                        anchors.left: parent.left
+                        anchors.bottom: parent.bottom //y: txtDate.height + Theme.paddingSmall
+
+                        function fillData() {
+                            var val;
+                            ouraCloud.setDateConsidered(txtDate.summaryDate);
+                            average = ouraCloud.average(DataB.keyActivity, scoreRow.scoreStr); // defaults to previous 7 days
+                            val = ouraCloud.value(DataB.keyActivity, scoreRow.scoreStr); // defaults to yesterday
+                            if (val === "-")
+                                isValid = false
+                            else {
+                                isValid = true;
+                                score = val*1.0;
+                            }
+                        }
+                    }
+
+                    TrendLabel {
+                        id: readinessTrend
+                        text: qsTr("readiness")
+                        //layout: layCompact
+                        score: 0
+                        isValid: false
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom //y: parent.height - height//anchors.bottom: parent.bottom
+
+                        function fillData() {
+                            var val;
+                            ouraCloud.setDateConsidered(txtDate.summaryDate);
+                            average = ouraCloud.average(DataB.keyReadiness, scoreRow.scoreStr); // defaults to previous 7 days
+                            val = ouraCloud.value(DataB.keyReadiness, scoreRow.scoreStr); // defaults to yesterday
+                            if (val === "-")
+                                isValid = false
+                            else {
+                                isValid = true;
+                                score = val*1.0;
+                            }
+                        }
+                    }
+
+                    TrendLabel {
+                        id: sleepTrend
+                        text: qsTr("sleep")
+                        //layout: layCompact
+                        score: 0
+                        isValid: false
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom //y: parent.height - height//anchors.bottom: parent.bottom
+
+                        function fillData() {
+                            var val;
+                            ouraCloud.setDateConsidered(txtDate.summaryDate);
+                            average = ouraCloud.average(DataB.keySleep, scoreRow.scoreStr); // defaults to previous 7 days
+                            val = ouraCloud.value(DataB.keySleep, scoreRow.scoreStr); // defaults to yesterday
+                            if (val === "-")
+                                isValid = false
+                            else {
+                                isValid = true;
+                                score = val*1.0;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
     Component {
         id: chartDelegate
         HistoryChart {
-            onParametersChanged: {
-                storeChartParameters(chartId, chTable, chType,
-                                     chCol, chCol2, chCol3,
-                                     chCol4, chHigh, chLow,
-                                     maxValue, heading)
-                chartsList.set(index)
-            }
+            width: page.width
+            chartNr: index
+            layout: chartsView.timeScale
             onBarSelected: {
-                selectColumn(chartId, barNr, firstDate.getTime())
+                chartsView.selectColumn(chartNr, barNr, firstDate.getTime(), xMove)
             }
-            onTimeScaleChanged: {
-                storeChartTimeScale(chartTimeScale)
+            onHeadingChanged: {
+                chartsList.modify(index, undefined, heading, undefined)
             }
-            onHideChart: {
-                chartsList.remove(chartsList.index)
+            onLatestValueChanged: {
+                chartsList.modify(index, undefined, undefined, latestValue)
             }
-
-            property string chartId: "ch" + index
-
-            function setUpChart(defTitle, defTable, defType, defM1, defM2,
-                                defM3, defM4, defHigh, defLow, defMax) {
-                heading = DataB.getSetting(chartId + DataB.keyChartTitle, defTitle);
-                chTable = DataB.getSetting(chartId + DataB.keyChartTable, defTable);
-                chType = DataB.getSetting(chartId + DataB.keyChartType, defType);
-                chCol = DataB.getSetting(chartId + DataB.keyChartCol, defM1);
-                chCol2 = DataB.getSetting(chartId + DataB.keyChartCol2, defM2);
-                chCol3 = DataB.getSetting(chartId + DataB.keyChartCol3, defM3);
-                chCol4 = DataB.getSetting(chartId + DataB.keyChartCol4, defM4);
-                chHigh = DataB.getSetting(chartId + DataB.keyChartHigh, defHigh);
-                chLow = DataB.getSetting(chartId + DataB.keyChartLow, defLow);
-                maxValue = DataB.getSetting(chartId + DataB.keyChartMax, defMax);
-                if (chType === DataB.chartTypeSleep) {
-                    setValueLabel = true;
+            onOldDataRead: {
+                chartsView.chartInitializing++
+                if (chartsView.chartInitializing >= chartsView.count) {
+                    chartsView.chartInitializing = 0
                 }
-                changeTimeScale(DataB.getSetting(DataB.keyChartTimeScale));
+            }
+            onTimeScaleRequest: {
+                chartsView.changeTimeScale()
+            }
+            onRemoveRequest: {
+                var itemNr = chartNr
+                remorseDelete(function () {
+                    chartsList.remove(itemNr)
+                    DataB.storeSettings(DataB.keyNrCharts, chartsList.count)
+                })
+            }
+
+            function parametersChanged() {
+                console.log("ch " + chartNr + ": " + chTable + ", " + chTable +
+                            ", " + heading)
+                storeChartParameters("ch" + chartNr, chTable, chType, chCol,
+                                     chCol2, chCol3, chCol4, chHigh,
+                                     chLow, maxValue, heading);
+                chartsList.modify(index, chTable, heading);
                 return;
             }
         }
     }
 
-    property real factor: 1.1 // limit for highlighting trends
-    property date _dateNow: new Date()
-    property bool _reloaded: false
-
-    function chartChanged(tb0, typ0, val0, low0, hgh0,
-                          tb1, typ1, val1, low1, hgh1) {
-        var result = false;
-        if (tb1 === undefined || typ1 === undefined || val1 === undefined) {
-            result = false;
-        } else if (tb0 !== tb1 || typ0 !== typ1) {
-            result = true;
-        } else if (typ1 === DataB.chartTypeSleep) {
-            result = false;
-        } else if (val0 !== val1) {
-            result = true;
-        } else if (typ1 === DataB.chartTypeMin && low0 !== low1) {
-            result = true;
-        } else if (typ1 === DataB.chartTypeMaxmin &&
-                   (low0 !== low1 || hgh0 !== hgh1)) {
-            result = true;
-        }
-        return result;
-    }
-
     function chartTitle(chrt){ // cover
-        var result;
-        if (chrt < chartsList.count) {
-            result = chartsList.get(i).chartTitle
+        var result = chartsView.chartTitle(chrt);
+
+        if (result === undefined) {
+            result = qsTr("chart %1 not defined").arg(chrt)
         }
 
         return result;
     }
 
-    function cloudActivityData() {
-        ouraCloud.setDateConsidered();
-        activityTrend.fillData();
-        chartsView.fillData(DataB.keyActivity);
+    function chartLatestValue(chrt){ // cover
+        var result = chartsView.chartLatestValue(chrt);
 
-        return;
-    }
+        if (result === undefined) {
+            result = "?? - " + chrt + " - ??";
+        }
 
-    function cloudBedTimeData() {
-        return;
-    }
-
-    function cloudReadinessData() {
-        ouraCloud.setDateConsidered();
-        readinessTrend.fillData();
-        chartsView.fillData(DataB.keyReadiness);
-        return;
-    }
-
-    function cloudSleepData() {
-        ouraCloud.setDateConsidered();
-        sleepTrend.fillData();
-        chartsView.fillData(DataB.keySleep);
-        return;
-    }
-
-    function latestItem(chartId) {
-        return chartsView.latestItem(chartId);
-    }
-
-    function latestType(chartId) {
-        return chartsView.latestType(chartId);
-    }
-
-    function latestValue(chrt){
-        return chartsView.latestValue(chrt);
-    }
-
-    function resetActivityData() {
-        ouraCloud.setDateConsidered();
-        activityTrend.fillData();
-        chartsView.resetData(DataB.keyActivity);
-        return;
-    }
-
-    function resetReadinessData() {
-        ouraCloud.setDateConsidered();
-        readinessTrend.fillData();
-        chartsView.resetData(DataB.keyReadiness);
-        return;
-    }
-
-    function resetSleepData() {
-        ouraCloud.setDateConsidered();
-        sleepTrend.fillData();
-        chartsView.resetData(DataB.keySleep);
-        return;
-    }
-
-    function setUpPage() {
-        chart1.setUpChart();
-        chart2.setUpChart();
-        chart3.setUpChart();
-        chart4.setUpChart();
-        return;
+        return result;
     }
 
     function storeChartParameters(chartId, chTable, chType, chCol,
@@ -556,7 +488,14 @@ Page {
         return;
     }
 
-    function storeChartTimeScale(currentTimeScale) {
-        return DataB.storeSettings(DataB.keyChartTimeScale, currentTimeScale + "");
+    function storeListParameters(nrCharts, currentTimeScale) {
+        if (currentTimeScale) {
+            DataB.storeSettings(DataB.keyChartTimeScale, currentTimeScale + "");
+        }
+        if (nrCharts) {
+            DataB.storeSettings(DataB.keyNrCharts, chartsView.count + "");
+        }
+
+        return;
     }
 }

@@ -574,7 +574,7 @@ void ouraCloudApi::fromCloudReadiness()
 {
     QJsonObject cloudJson;
     QJsonValue cloudValue;
-    QJsonArray cloudArray;
+    //QJsonArray cloudArray;
     jsonReadiness.clear();
     cloudJson = processCloudResponse(readinessReply, &jsonReadiness);
     cloudValue = cloudJson.value(keyReadiness);
@@ -597,7 +597,7 @@ void ouraCloudApi::fromCloudSleep()
 {
     QJsonObject cloudJson;
     QJsonValue cloudValue;
-    QJsonArray cloudArray;
+    //QJsonArray cloudArray;
     jsonSleep.clear();
     cloudJson = processCloudResponse(sleepReply, &jsonSleep);
     cloudValue = cloudJson.value(keySleep);

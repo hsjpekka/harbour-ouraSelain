@@ -291,7 +291,7 @@ Page {
                 width: parent.width - 2*x
                 orientation: ListView.Horizontal
                 maxValue: 5
-                showLabel: true
+                showLabel: met5min.showLabelAlways
                 barWidth: 8
                 labelWidth: barWidth
                 labelFontSize: Theme.fontSizeSmall
@@ -378,7 +378,7 @@ Page {
                 width: parent.width - 2*x
                 orientation: ListView.Horizontal
                 maxValue: 12
-                showLabel: true
+                showLabel: met1min.showLabelAlways
                 barWidth: Theme.paddingMedium
                 labelWidth: barWidth
                 labelFontSize: Theme.fontSizeSmall

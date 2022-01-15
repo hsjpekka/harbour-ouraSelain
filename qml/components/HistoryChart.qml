@@ -5,11 +5,19 @@ import "../utils/datab.js" as DataB
 import "../utils/scripts.js" as Scripts
 
 ListItem {
-    id: liRoot
-    width: parent.width
+    id: chartListItem
+    width: Screen.width
     contentHeight: column.height
     menu: itemMenu
+    Component.onCompleted: {
+        if (_manualAddition === false) {
+            setUpChart()
+        } else {
+            newChartSettings(0)
+        }
+    }
 
+    property int   chartNr: -1
     property alias chartHeight: chart.height
     property alias chCol: chart.col
     property alias chCol2: chart.col2
@@ -25,75 +33,147 @@ ListItem {
     property alias heading: title.text
     property alias lastDate: chart.lastDate
     property alias latestValue: chart.fullDayValue
+    property alias layout: chart.timeScale
     property alias maxValue: chart.maxValue
     property alias setValueLabel: chart.setValueLabel
     property alias valuesList: chart.model
 
-    signal parametersChanged()
-    signal barSelected(int barNr)
-    signal timeScaleChanged(int chartTimeScale)
-    signal hideChart()
+    signal barSelected(int barNr, int xMove)
+    signal barPressAndHold(int barNr)
+    signal oldDataRead()
+    signal timeScaleRequest()
+    signal removeRequest()
 
     ContextMenu {
         id: itemMenu
         MenuItem {
             text: qsTr("settings")
             onClicked: {
-                var dialog = pageContainer.push(
-                            Qt.resolvedUrl("../pages/chartSettings.qml"), {
-                                "chartTable": chart.table,
-                                "chartTitle": title.text,
-                                "chartType": chart.chType,
-                                "chartValue1": chart.col,
-                                "chartValue2": chart.col2,
-                                "chartValue3": chart.col3,
-                                "chartValue4": chart.col4,
-                                "chartLowBar": chart.barLow,
-                                "chartHighBar": chart.barHi,
-                                "chartMaxValue": chart.maxValue
-                            })
-                dialog.accepted.connect(function () {
-                    if (dialog.chartTable !== undefined && dialog.chartType !== undefined) {
-                        if (valuesModified(chTable, chType, chCol, chCol2, chCol3, chCol4,
-                                           chLow, chHigh,
-                                           dialog.chartTable, dialog.chartType, dialog.chartValue1,
-                                           dialog.chartValue2, dialog.chartValue3, dialog.chartValue4,
-                                           dialog.chartLowBar, dialog.chartHighBar)
-                                ) {
-                            chTable = dialog.chartTable;
-                            chType = dialog.chartType;
-                            chCol = dialog.chartValue1;
-                            chCol2 = dialog.chartValue2;
-                            chCol3 = dialog.chartValue3;
-                            chCol4 = dialog.chartValue4;
-                            chHigh = dialog.chartHighBar;
-                            chLow = dialog.chartLowBar;
-                            heading = dialog.chartTitle;
-                            maxValue = dialog.chartMaxValue;
-                            parametersChanged();
-                            reset();
-                        }
+                newChartSettings(1)
+            }
+        }
+        MenuItem {
+            text: (layout === 0) ? qsTr("dense layout") : qsTr("sparce layout")
+            onClicked: {
+                timeScaleRequest()
+                //changeTimeScale(chartsView.changeTimeScale())
+            }
+        }
+        MenuItem {
+            text: qsTr("remove graph")
+            onClicked: {
+                removeRequest(chartNr)
+            }
+        }
+    }
 
-                        if (dialog.chartMaxValue !== undefined &&
-                                maxValue !== dialog.chartMaxValue) {
-                            parametersChanged();
-                            rescale(maxValue, dialog.chartMaxValue);
-                        }
-                    }
-                })
+    Connections {
+        id: ouraConnection
+        target: ouraCloud
+        onFinishedActivity: {
+            if (chTable === DataB.keyActivity) {
+                if (!ouraConnection.reloaded) {
+                    ouraCloud.setDateConsidered()
+                    fillData()
+                    newData()
+                } else {
+                    fillData() // updates the averages
+                    oldData()
+                    ouraConnection.reloaded = ouraCloud.isLoading()
+                }
             }
         }
-        MenuItem {
-            text: (chart.timeScale === 0) ? qsTr("dense layout") : qsTr("sparce layout")
-            onClicked: {
-                changeTimeScale()
-                timeScaleChanged(chart.timeScale)
+        onFinishedBedTimes: {
+            //ouraCloud.setDateConsidered();
+            //_refreshedBedTimes++;
+        }
+        onFinishedReadiness: {
+            if (chTable === DataB.keyReadiness) {
+                if (!ouraConnection.reloaded) {
+                    ouraCloud.setDateConsidered()
+                    fillData()
+                    newData()
+                } else {
+                    fillData() // updates the averages
+                    oldData()
+                    ouraConnection.reloaded = ouraCloud.isLoading()
+                }
             }
         }
-        MenuItem {
-            text: qsTr("hide chart")
-            onClicked: {
-                hideChart()
+        onFinishedSleep: {
+            if (chTable === DataB.keySleep) {
+                if (!ouraConnection.reloaded) {
+                    ouraCloud.setDateConsidered()
+                    fillData()
+                    newData()
+                } else {
+                    fillData() // updates the averages
+                    oldData()
+                    ouraConnection.reloaded = ouraCloud.isLoading()
+                }
+            }
+        }
+
+        property bool reloaded: false
+    }
+
+    Connections {
+        target: applicationWindow
+        onStoredDataRead: {
+            if (chartNr === chartsView.chartInitializing) {
+                fillData() // update yearly average in summary
+                oldData() // chart
+                oldDataRead()
+            } else {
+                dataFetcher.start()
+            }
+        }
+        onSettingsReady: {
+            setUpChart()
+        }
+    }
+
+    Connections {
+        target: chartsView
+        onCloudReloaded: {
+            ouraConnection.reloaded = true;
+        }
+        onTimeScaleChanged: {
+            changeTimeScale(chartsView.timeScale)
+        }
+        onSelectedBarChanged: {
+            var dTime = flickker.interval/1000
+            if (!flickker.running) { // this chart has not been clicked
+                moveCurrentItemToCenter(chartsView.xDist/dTime)
+            }
+        }
+        onSummaryDateModified: {
+            selectDate(chartsView.summaryDate)
+        }
+    }
+
+    Timer {
+        id: flickker
+        interval: 0.3*1000
+        running: false
+        repeat: false
+        onTriggered: {
+            chart.cancelFlick()
+            moveCurrentItemToCenter()            
+        }
+    }
+
+    Timer {
+        id: dataFetcher
+        interval: 1*1000
+        running: false
+        repeat: true
+        onTriggered: {
+            if (chartNr === chartsView.chartInitializing) {
+                fillData() // update yearly average in summary
+                oldData() // chart
+                oldDataRead()
+                running = false
             }
         }
     }
@@ -104,21 +184,19 @@ ListItem {
 
         SectionHeader {
             id: title
-            text: "header" + chartId
+            text: "chart " + chartNr
         }
 
         Item {
             height: Theme.itemSizeHuge
-            width: parent.width - 2*x
-            x: Theme.horizontalPageMargin
-            //spacing: Theme.paddingMedium
+            width: parent.width
 
             BarChart {
                 id: chart
                 height: parent.height
                 width: parent.width //- parent.spacing - summary.width
                 barWidth: timeScale === 1? narrowBar : wideBar
-                showLabel: timeScale !== 1
+                showLabel: 1
                 orientation: ListView.Horizontal
                 maxValue: 100
                 valueLabelOutside: true
@@ -130,16 +208,21 @@ ListItem {
                         color: Theme.highlightColor
                         anchors.bottom: parent.bottom
                         x: Theme.paddingSmall
-                        //anchors.bottomMargin: Theme.fontSizeSmall + Theme.paddingSmall
                     }
                 }
                 highlightFollowsCurrentItem: true
                 onBarPressAndHold: {
-                    liRoot.openMenu()
+                    chartListItem.openMenu()
                 }
                 onBarSelected: {
-                    liRoot.closeMenu()
-                    liRoot.barSelected(barNr)
+                    if (chartListItem.menuOpen) {
+                        chartListItem.closeMenu()
+                    } else {
+                        var dX, dY, dTime = flickker.interval/1000
+                        dX = 0.5*chartListItem.width - xView
+                        moveCurrentItemToCenter(dX/dTime)
+                        chartListItem.barSelected(barNr, dX)
+                    }
                 }
                 footer: Item {
                     width: summary.width + Theme.paddingMedium
@@ -153,7 +236,7 @@ ListItem {
 
                 property date firstDate: new Date()
                 property date lastDate: new Date()
-                property bool loading: true
+                property bool loading: false
                 property string table: DataB.keyReadiness
                 property string col: "score"
                 property string col2: ""
@@ -163,6 +246,8 @@ ListItem {
                 property string barLow: ""
                 property string chType: DataB.chartTypeSingle
                 property string fullDayValue
+                property real selectedX: 0
+                property real selectedY: 0
                 property int timeScale: 0 // 0 - days grouped by week, 1 - days grouped by month
                 property int wideBar: Theme.fontSizeMedium
                 property int narrowBar: 1.5*Theme.paddingSmall
@@ -175,11 +260,11 @@ ListItem {
                     if (typeof newTimeScale === typeof 1 || typeof newTimeScale === typeof 1.0 || typeof newTimeScale === typeof "" ) {
                         timeScale = newTimeScale*1.0;
                     } else {
-                        DataB.log("unknown timeScale: " + newTimeScale + ", set to 0");
-                        timeScale = 0;
+                        DataB.log("unknown timeScale: " + newTimeScale);
+                        timeScale++;
                     }
                     if (timeScale > 1 || timeScale < 0) {
-                        DataB.log("unknown timeScale: " + timeScale);
+                        DataB.log("timeScale out of range: " + timeScale + ", set = 0");
                         timeScale = 0;
                     }
 
@@ -195,14 +280,6 @@ ListItem {
 
                         summaryDate.setTime(summaryDate.getTime() + Scripts.msDay)
                     }
-                    return;
-                }
-
-                function reset() {
-                    chartData.clear();
-                    loading = true;
-                    oldData();
-                    loading = false;
                     return;
                 }
 
@@ -326,6 +403,7 @@ ListItem {
                     var val1, val2, val3, val4, highBar, lowBar, diffMs, diffDays, dayStr, sct;
                     var first, last, dayMs = 24*60*60*1000, week, i=0;
 
+                    loading = true;
                     first = ouraCloud.firstDate(table);
 
                     if (count === 0) {
@@ -385,22 +463,35 @@ ListItem {
                     last.setTime(last.getTime() + dayMs);
                     firstDate = last;
 
+                    loading = false;
                     return;
                 }
 
-                function reScale(oldMax, newMax) {
+                function reScale(newMax) {
                     chart.maxValue = newMax;
+                    return;
+                }
+
+                function reset() {
+                    chartData.clear();
+                    loading = true;
+                    oldData();
+                    loading = false;
                     return;
                 }
             }
 
             TrendView {
                 id: summary
+                anchors {
+                    right: parent.right
+                    rightMargin: Theme.paddingSmall
+                }
                 height: parent.height
                 text: qsTr("score")
                 factor: 1.2
                 maxValue: chart.maxValue
-                anchors.right: parent.right
+                barWidth: Theme.fontSizeExtraSmall
 
                 property string scoreStr: chart.col
 
@@ -423,6 +514,8 @@ ListItem {
                         valueType = 1;
                     } else if (unit === "minute") {
                         valueType = 2;
+                    } else {
+                        valueType = 0;
                     }
 
                     averageWeek = ouraCloud.average(chart.table, val, 7);
@@ -446,18 +539,93 @@ ListItem {
     }
 
     function changeTimeScale(newTimeScale) { // 0 - days grouped by week, 1 - days grouped by month
-        if (newTimeScale === undefined) {
-            if (chart.timeScale === 0) {
-                newTimeScale = 1;
-            } else {
-                newTimeScale = 0;
-            }
-        }
         return chart.changeGrouping(newTimeScale);
     }
 
     function fillData() {
         return summary.fillData()
+    }
+
+    function moveCurrentItemToCenter(xVelocity) {
+        var factor = 2.1, maxVel = 1100, minVel, yVelocity = 0;
+        if (xVelocity) {
+            minVel = chart.flickDeceleration*0.2;
+            xVelocity = factor*xVelocity;
+            if (xVelocity < minVel && xVelocity >= 0) {
+                xVelocity = minVel;
+            } else if (xVelocity > -minVel && xVelocity < 0) {
+                xVelocity = -minVel;
+            }
+
+            if (xVelocity > maxVel) {
+                xVelocity = maxVel
+            } else if (xVelocity < -maxVel) {
+                xVelocity = -maxVel
+            }
+            flickker.start();
+            chart.flick(xVelocity, yVelocity);
+        } else {
+            chart.currentIndex = chartsView.selectedBar
+            positionViewAtIndex(currentIndex, ListView.Center)
+        }
+        return;
+    }
+
+    function newChartSettings(isNewChart) {
+        var dialog = pageStack.push(
+                    Qt.resolvedUrl("../pages/chartSettings.qml"), {
+                        "chartTable": chTable,
+                        "chartTitle": heading,
+                        "chartType": chType,
+                        "chartValue1": chCol,
+                        "chartValue2": chCol2,
+                        "chartValue3": chCol3,
+                        "chartValue4": chCol4,
+                        "chartLowBar": chLow,
+                        "chartHighBar": chHigh,
+                        "chartMaxValue": maxValue
+                    });
+        dialog.accepted.connect(function () {
+            if (dialog.chartTable !== undefined && dialog.chartType !== undefined) {
+                if (valuesModified(dialog.chartTable, dialog.chartType,
+                                   dialog.chartValue1, dialog.chartValue2,
+                                   dialog.chartValue3, dialog.chartValue4,
+                                   dialog.chartLowBar, dialog.chartHighBar)
+                        ) {
+                    chTable = dialog.chartTable;
+                    chType = dialog.chartType;
+                    chCol = dialog.chartValue1;
+                    chCol2 = dialog.chartValue2;
+                    chCol3 = dialog.chartValue3;
+                    chCol4 = dialog.chartValue4;
+                    chHigh = dialog.chartHighBar;
+                    chLow = dialog.chartLowBar;
+                    heading = dialog.chartTitle;
+                    maxValue = dialog.chartMaxValue;
+                    console.log("alkaa");
+                    parametersChanged();
+                    console.log("loppuu");
+                    reset();
+                }
+
+                if (dialog.chartMaxValue !== undefined &&
+                        maxValue !== dialog.chartMaxValue) {
+                    parametersChanged();
+                    rescale(dialog.chartMaxValue);
+                }
+            }
+        });
+        dialog.rejected.connect(function () {
+            if (isNewChart === 0) {
+                removeRequest();
+            }
+            return;
+        })
+
+
+        _manualAddition = false;
+
+        return;
     }
 
     function newData() {
@@ -476,8 +644,8 @@ ListItem {
         return chart.positionViewAtIndex(barNr, position);
     }
 
-    function rescale(oldMax, newMax) {
-        return chart.reScale(oldMax, newMax);
+    function rescale(newMax) {
+        return chart.reScale(newMax);
     }
 
     function reset() {
@@ -494,31 +662,61 @@ ListItem {
         return;
     }
 
-    function valuesModified(tb0, typ0, val0a, val0b, val0c, val0d,
-                            low0, hgh0, max0,
-                          tb1, typ1, val1a, val1b, val1c, val1d,
+    function setUpChart() {
+        var chartId, defV2, defV3, defV4, i=0, nrCharts=0;
+
+        chart.changeGrouping(DataB.getSetting(DataB.keyChartTimeScale, 0));
+
+        chartId = "ch" + chartNr;
+        heading = DataB.getSetting(chartId + DataB.keyChartTitle, qsTr("sleep"));
+        chTable = DataB.getSetting(chartId + DataB.keyChartTable, DataB.keySleep);
+        chType = DataB.getSetting(chartId + DataB.keyChartType, DataB.chartTypeSleep);
+        chCol = DataB.getSetting(chartId + DataB.keyChartValue1, "deep");
+        if (chTable === DataB.keySleep && chType === DataB.chartTypeSleep) {
+            defV2 = "light";
+            defV3 = "rem";
+            defV4 = "awake";
+        } else {
+            defV2 = "";
+            defV3 = "";
+            defV4 = "";
+        }
+        chCol2 = DataB.getSetting(chartId + DataB.keyChartValue2, defV2);
+        chCol3 = DataB.getSetting(chartId + DataB.keyChartValue3, defV3);
+        chCol4 = DataB.getSetting(chartId + DataB.keyChartValue4, defV4);
+        chHigh = DataB.getSetting(chartId + DataB.keyChartHigh, "");
+        chLow = DataB.getSetting(chartId + DataB.keyChartLow, "");
+        maxValue = DataB.getSetting(chartId + DataB.keyChartMax, 8*60*60); // s
+        if (chType === DataB.chartTypeSleep) {
+            setValueLabel = true;
+        }
+
+        return;
+    }
+
+    function valuesModified(tb1, typ1, val1, val2, val3, val4,
                             low1, hgh1, max1) {
         var result = false;
-        if (tb1 === undefined || typ1 === undefined || val1a === undefined) {
+        if (tb1 === undefined || typ1 === undefined || val1 === undefined) {
             result = false;
-        } else if (tb0 !== tb1 || typ0 !== typ1) {
+        } else if (chTable !== tb1 || chType !== typ1) {
             result = true;
         } else if (typ1 === DataB.chartTypeSleep) {
             result = false;
-        } else if (val0a !== val1a) {
+        } else if (chCol !== val1) {
             result = true;
-        } else if (val0b !== val1b) {
+        } else if (chCol2 !== val2) {
             result = true;
-        } else if (val0c !== val1c) {
+        } else if (chCol3 !== val3) {
             result = true;
-        } else if (val0d !== val1d) {
+        } else if (chCol4 !== val4) {
             result = true;
-        } else if (typ1 === DataB.chartTypeMin && low0 !== low1) {
+        } else if (typ1 === DataB.chartTypeMin && chLow !== low1) {
             result = true;
         } else if (typ1 === DataB.chartTypeMaxmin &&
-                   (low0 !== low1 || hgh0 !== hgh1)) {
+                   (chLow !== low1 || chHigh !== hgh1)) {
             result = true;
-        } else if (max0 !== max1) {
+        } else if (maxValue !== max1) {
             result = true;
         }
         return result;
