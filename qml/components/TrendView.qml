@@ -6,7 +6,7 @@ Item {
     id: root
     width: implicitWidth
     height: implicitHeight
-    implicitWidth: weekBar.x + weekBar.width //column.x + column.width
+    implicitWidth: weekBar.x + weekBar.contentWidth //column.x + column.width
     implicitHeight: yearBar.height > monthBar.height?
                         (yearBar.height > weekBar.height?
                              yearBar.height : weekBar.height) :
@@ -23,6 +23,10 @@ Item {
     property color  barNormalColor: Theme.secondaryHighlightColor
     property color  barSmallColor: Theme.secondaryColor
     property int    barWidth: Theme.fontSizeSmall
+    property int    daysRead: 0
+    property int    daysInWeek: 7
+    property int    daysInMonth: 30
+    property int    daysInYear: 365
     property real   factor: 1.2
     property int    fontSize: Theme.fontSizeSmall
     property bool   isValid: true
@@ -79,11 +83,16 @@ Item {
             left: parent.left
         }
 
+        property int contentWidth: width > yearLabel.contentWidth? width : yearLabel.contentWidth
+
         Label {
             id: yearLabel
-            text: "365"
+            text: "" + daysInYear
             color: Theme.highlightColor
-            font.pixelSize: root.labelFontSize
+            font {
+                italic: daysRead < daysInYear
+                pixelSize: root.labelFontSize
+            }
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.bottom
@@ -108,6 +117,7 @@ Item {
                 text: valueType === 0 ? averageYear : labelTxt
                 anchors.centerIn: parent
                 color: Theme.highlightColor
+                font.italic: daysRead < daysInYear
 
                 property string labelTxt: ""
 
@@ -137,13 +147,21 @@ Item {
         anchors {
             bottom: yearBar.bottom
             left: yearBar.right
-            leftMargin: _hgap
+            leftMargin: _hgap + monthBar.extraGap
         }
 
+        property int contentWidth: width > monthLabel.contentWidth? width : monthLabel.contentWidth
+        property real extraGap: 0.5*(yearBar.contentWidth - yearBar.width + contentWidth - width)
+
         Label {
-            text: "30"
+            id: monthLabel
+            text: "" + daysInMonth
             color: Theme.highlightColor
             font.pixelSize: root.labelFontSize
+            font {
+                italic: daysRead < daysInMonth
+                pixelSize: root.labelFontSize
+            }
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.bottom
@@ -168,6 +186,7 @@ Item {
                 text: valueType === 0 ? averageMonth : labelTxt
                 anchors.centerIn: parent
                 color: Theme.highlightColor
+                font.italic: daysRead < daysInMonth
 
                 property string labelTxt: ""
             }
@@ -192,13 +211,20 @@ Item {
         anchors {
             bottom: yearBar.bottom
             left: monthBar.right
-            leftMargin: _hgap
+            leftMargin: _hgap + weekBar.extraGap
         }
 
+        property int contentWidth: width > weekLabel.contentWidth? width : weekLabel.contentWidth
+        property real extraGap: 0.5*(monthBar.contentWidth - monthBar.width + contentWidth - width)
+
         Label {
-            text: "7"
+            id: weekLabel
+            text: "" + daysInWeek
             color: Theme.highlightColor
-            font.pixelSize: root.labelFontSize
+            font {
+                italic: daysRead < daysInWeek
+                pixelSize: root.labelFontSize
+            }
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.bottom
@@ -223,6 +249,7 @@ Item {
                 text: valueType === 0 ? averageWeek : labelTxt
                 anchors.centerIn: parent
                 color: Theme.highlightColor
+                font.italic: daysRead < daysInWeek
 
                 property string labelTxt: ""
             }

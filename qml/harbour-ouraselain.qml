@@ -34,7 +34,7 @@ ApplicationWindow
     signal storedDataRead()
     signal settingsReady()
 
-    property int daysToRead: 365//14
+    property int daysToRead: 0//365//14
     property var db: null
     property int msDay: 24*60*60*1000
     property string personalAccessToken: ""
@@ -70,11 +70,11 @@ ApplicationWindow
         id: timerOldRecords
         interval: 10*1000
         repeat: true // true to read few records at a time
-        running: true
+        running: daysToRead > 0 ? true : false
         onTriggered: {
             var date = firstDateToRead, more
             more = readOldRecords(firstDateToRead, latestDateToRead)
-            if (more >= 0) {
+            if (more >= 0 && daysToRead > 0) {
                 storedDataRead()
                 firstDateToRead = new Date(firstDateToRead.getTime() - daysToRead*msDay)
                 latestDateToRead = new Date(latestDateToRead.getTime() - daysToRead*msDay)
@@ -187,13 +187,26 @@ ApplicationWindow
     }
 
     function setDatesToRead() {
-        var dateToShowFirst = new Date();
-        var extraDays = dateToShowFirst.getDay() - Scripts.firstDayOfWeek;
+        var dateToShowFirst, extraDays, now; // read full weeks
 
-        if (extraDays < 0) { // week starts on Monday (to Saturday)
-            extraDays = extraDays + Math.min(7, daysToRead);
+        if (daysToRead < 1) { // read all records
+            return;
         }
-        dateToShowFirst = new Date(dateToShowFirst.getTime() - msDay*(daysToRead + extraDays));
+
+        now = new Date();
+        extraDays = now.getDay() - Scripts.firstDayOfWeek;
+
+        if (extraDays < 0) { // week starts on Monday (not on Sunday)
+            if (daysToRead > 0) {
+                extraDays = extraDays + Math.min(7, daysToRead);
+            } else {
+                extraDays = extraDays + 7;
+            }
+        }
+
+        //the days to read first
+        dateToShowFirst = new Date(now.getTime() - msDay*(daysToRead + extraDays));
+        //the days to read a bit later
         timerOldRecords.latestDateToRead = new Date(dateToShowFirst.getTime() - msDay);
         timerOldRecords.firstDateToRead = new Date(dateToShowFirst.getTime() - daysToRead*msDay);
 

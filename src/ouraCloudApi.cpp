@@ -256,7 +256,7 @@ double ouraCloudApi::averageSleep(QString key, QDate date)
     return result;
 }
 
-QJsonValue ouraCloudApi::checkValue(QJsonObject *object, QString key, bool silent)
+QJsonValue ouraCloudApi::checkValue(QJsonObject *object, QString key)
 {
     QJsonValue result = object->value(key);
     if (object->contains(key)) {

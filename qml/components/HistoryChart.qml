@@ -28,6 +28,7 @@ ListItem {
     property alias chTable: chart.table
     property alias chType: chart.chType
     property alias currentIndex: chart.currentIndex
+    property alias daysToFetch: dataFetcher.daysToFetch
     property alias factor: summary.factor
     property alias firstDate: chart.firstDate
     property alias heading: title.text
@@ -40,7 +41,6 @@ ListItem {
 
     signal barSelected(int barNr, int xMove)
     signal barPressAndHold(int barNr)
-    signal oldDataRead()
     signal timeScaleRequest()
     signal removeRequest()
 
@@ -56,7 +56,6 @@ ListItem {
             text: (layout === 0) ? qsTr("dense layout") : qsTr("sparce layout")
             onClicked: {
                 timeScaleRequest()
-                //changeTimeScale(chartsView.changeTimeScale())
             }
         }
         MenuItem {
@@ -74,8 +73,8 @@ ListItem {
             if (chTable === DataB.keyActivity) {
                 if (!ouraConnection.reloaded) {
                     ouraCloud.setDateConsidered()
-                    fillData()
                     newData()
+                    fillData()
                 } else {
                     fillData() // updates the averages
                     oldData()
@@ -114,19 +113,15 @@ ListItem {
             }
         }
 
-        property bool reloaded: false
+        property bool reloaded: false // true if user has asked for old data
     }
 
     Connections {
         target: applicationWindow
         onStoredDataRead: {
-            if (chartNr === chartsView.chartInitializing) {
-                fillData() // update yearly average in summary
-                oldData() // chart
-                oldDataRead()
-            } else {
-                dataFetcher.start()
-            }
+            fillData()
+            oldData() // chart
+            //    dataFetcher.start()
         }
         onSettingsReady: {
             setUpChart()
@@ -169,13 +164,34 @@ ListItem {
         running: false
         repeat: true
         onTriggered: {
-            if (chartNr === chartsView.chartInitializing) {
-                fillData() // update yearly average in summary
+            /*
+            if (chartsView.busy === 0) {
+                chartsView.busy++
+                fillData()
+                if (chart.count === 0) { // nopeuttaako
+                    chart.visible = false
+                    chart.enabled = false
+                }
+                console.log("vanhat tiedot kuvaajaan " + chartNr)
                 oldData() // chart
+                console.log("vanhat tiedot luettu kuvaajaan " + chartNr)
+                chart.visible = true
+                chart.enabled = true
                 oldDataRead()
                 running = false
-            }
+                chartsView.busy--
+            } // */
+
+            //if (chartNr === chartsView.chartInitializing) {
+            //    fillData() // update yearly average in summary
+            //    oldData() // chart
+            //    oldDataRead()
+            //    running = false
+            //}
         }
+
+        property date lastDayToFetch: new Date()
+        property int daysToFetch: 30
     }
 
     Column {
@@ -225,7 +241,7 @@ ListItem {
                     }
                 }
                 footer: Item {
-                    width: summary.width + Theme.paddingMedium
+                    width: summary.width + summary.anchors.rightMargin + Theme.paddingMedium
                 }
 
                 BusyIndicator {
@@ -464,6 +480,7 @@ ListItem {
                     firstDate = last;
 
                     loading = false;
+                    chart.positionViewAtEnd();
                     return;
                 }
 
@@ -485,7 +502,7 @@ ListItem {
                 id: summary
                 anchors {
                     right: parent.right
-                    rightMargin: Theme.paddingSmall
+                    rightMargin: Theme.paddingMedium
                 }
                 height: parent.height
                 text: qsTr("score")
@@ -496,7 +513,7 @@ ListItem {
                 property string scoreStr: chart.col
 
                 function fillData() {
-                    var unit, val;
+                    var day1, dayN, unit, val;
 
                     if (chart.chType === DataB.chartTypeSleep) {
                         val = "total";
@@ -518,9 +535,17 @@ ListItem {
                         valueType = 0;
                     }
 
-                    averageWeek = ouraCloud.average(chart.table, val, 7);
-                    averageMonth = ouraCloud.average(chart.table, val, 30);
-                    averageYear = ouraCloud.average(chart.table, val, 365);
+                    day1 = ouraCloud.firstDate();
+                    dayN = ouraCloud.lastDate(1); // don't include today
+                    if (dayN.getDay() >= 0 && day1.getDay() >= 0) {
+                        daysRead = Math.round((dayN.getTime() - day1.getTime())/msDay) + 1;
+                        //console.log("" + daysRead + " = " + dayN.toLocaleDateString() + day1.toLocaleDateString())
+                        averageWeek = ouraCloud.average(chart.table, val, daysInWeek);
+                        averageMonth = ouraCloud.average(chart.table, val, daysInMonth);
+                        averageYear = ouraCloud.average(chart.table, val, daysInYear);
+                    }
+
+                    return;
                 }
 
                 ActivityList {
@@ -602,9 +627,7 @@ ListItem {
                     chLow = dialog.chartLowBar;
                     heading = dialog.chartTitle;
                     maxValue = dialog.chartMaxValue;
-                    console.log("alkaa");
                     parametersChanged();
-                    console.log("loppuu");
                     reset();
                 }
 

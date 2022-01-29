@@ -26,7 +26,7 @@ public:
     Q_INVOKABLE QDate firstDate(QString summaryType, int first=0); // if first < 0 counts from the last
     Q_INVOKABLE QDate firstDate(int first=0); // if first < 0 counts from the last
     Q_INVOKABLE int fromDB(QString summaryType, QString jsonDb);
-    Q_INVOKABLE bool isLoading(QString summaryType = "");
+    Q_INVOKABLE bool isLoading(QString summaryType = ""); // is loading data from Oura Cloud
     Q_INVOKABLE QDate lastDate(int i=0); // usually only activity-data on the latest date
     Q_INVOKABLE QDate lastDate(QString summaryType, int i=0); // usually only activity-data on the latest date
     Q_INVOKABLE QString myName(QString defVal);
@@ -101,7 +101,7 @@ private:
     int addRecordList(ContentType content, QJsonArray array);
     double averageSleep(QString key, QDate date);
     double averageReadiness(QString key, QDate date);
-    QJsonValue checkValue(QJsonObject *object, QString key, bool silent=false);
+    QJsonValue checkValue(QJsonObject *object, QString key);
     QJsonObject convertToObject(QNetworkReply *reply);
     QDate dateAt(ContentType type, int i);
     void download(ContentType content);

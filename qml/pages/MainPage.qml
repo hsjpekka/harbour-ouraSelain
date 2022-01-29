@@ -79,12 +79,13 @@ Page {
 
         }
 
-        property int chartInitializing: 0
+        property int  busy: 0
+        //property int  chartInitializing: 0
         property real factor: 1.1 // limit for highlighting trends
         property date summaryDate: new Date(new Date().getTime() - 27*60*60*1000) // show summaries of yesterday
-        property int timeScale: 0
-        property int selectedBar: -1
-        property int xDist: 0
+        property int  timeScale: 0
+        property int  selectedBar: -1
+        property int  xDist: 0
 
         signal summaryDateModified()
         signal cloudReloaded()
@@ -258,20 +259,28 @@ Page {
             Connections {
                 target: ouraCloud
                 onFinishedActivity: {
-                    ouraCloud.setDateConsidered();
-                    activityTrend.fillData();
+                    chartsView.busy++
+                    ouraCloud.setDateConsidered()
+                    activityTrend.fillData()
+                    chartsView.busy--
                 }
                 onFinishedBedTimes: {
+                    //chartsView.busy++
                     //ouraCloud.setDateConsidered();
                     //_refreshedBedTimes++;
+                    //chartsView.busy--
                 }
                 onFinishedReadiness: {
-                    ouraCloud.setDateConsidered();
-                    readinessTrend.fillData();
+                    chartsView.busy++
+                    ouraCloud.setDateConsidered()
+                    readinessTrend.fillData()
+                    chartsView.busy--
                 }
                 onFinishedSleep: {
-                    ouraCloud.setDateConsidered();
-                    sleepTrend.fillData();
+                    chartsView.busy++
+                    ouraCloud.setDateConsidered()
+                    sleepTrend.fillData()
+                    chartsView.busy--
                 }
             }
 
@@ -282,9 +291,9 @@ Page {
                         summaryRow.dateLoop = false
                     } else {
                         txtDate.value = chartsView.summaryDate.toDateString(Qt.locale(), Locale.ShortFormat)
-                        activityTrend.fillData();
-                        readinessTrend.fillData();
-                        sleepTrend.fillData();
+                        activityTrend.fillData()
+                        readinessTrend.fillData()
+                        sleepTrend.fillData()
                     }
                 }
             }
@@ -422,12 +431,6 @@ Page {
             onLatestValueChanged: {
                 chartsList.modify(index, undefined, undefined, latestValue)
             }
-            onOldDataRead: {
-                chartsView.chartInitializing++
-                if (chartsView.chartInitializing >= chartsView.count) {
-                    chartsView.chartInitializing = 0
-                }
-            }
             onTimeScaleRequest: {
                 chartsView.changeTimeScale()
             }
@@ -440,8 +443,6 @@ Page {
             }
 
             function parametersChanged() {
-                console.log("ch " + chartNr + ": " + chTable + ", " + chTable +
-                            ", " + heading)
                 storeChartParameters("ch" + chartNr, chTable, chType, chCol,
                                      chCol2, chCol3, chCol4, chHigh,
                                      chLow, maxValue, heading);
