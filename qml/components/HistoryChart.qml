@@ -40,9 +40,9 @@ ListItem {
     property alias valuesList: chart.model
 
     signal barSelected(int barNr, int xMove)
-    signal barPressAndHold(int barNr)
-    signal timeScaleRequest()
+    signal parametersChanged()
     signal removeRequest()
+    signal timeScaleRequest()
 
     ContextMenu {
         id: itemMenu
@@ -210,7 +210,7 @@ ListItem {
             BarChart {
                 id: chart
                 height: parent.height
-                width: parent.width //- parent.spacing - summary.width
+                width: count > 0 ? parent.width : 0 //- parent.spacing - summary.width
                 barWidth: timeScale === 1? narrowBar : wideBar
                 showLabel: 1
                 orientation: ListView.Horizontal
@@ -597,7 +597,26 @@ ListItem {
     }
 
     function newChartSettings(isNewChart) {
-        var dialog = pageStack.push(
+        // isNewChart === 0 if the chart is new,
+        // isNewChart === 1 if current content is to be modified
+        var dialog, options;
+        if (isNewChart === 1) {
+            options = {
+                "chartTable": chTable,
+                "chartTitle": heading,
+                "chartType": chType,
+                "chartValue1": chCol,
+                "chartValue2": chCol2,
+                "chartValue3": chCol3,
+                "chartValue4": chCol4,
+                "chartLowBar": chLow,
+                "chartHighBar": chHigh,
+                "chartMaxValue": maxValue
+            };
+        }
+
+        if (isNewChart === 2) {
+            dialog = pageStack.push(
                     Qt.resolvedUrl("../pages/chartSettings.qml"), {
                         "chartTable": chTable,
                         "chartTitle": heading,
@@ -610,6 +629,11 @@ ListItem {
                         "chartHighBar": chHigh,
                         "chartMaxValue": maxValue
                     });
+        } else {
+        }
+        dialog = pageStack.push(
+                Qt.resolvedUrl("../pages/chartSettings.qml"), options);
+
         dialog.accepted.connect(function () {
             if (dialog.chartTable !== undefined && dialog.chartType !== undefined) {
                 if (valuesModified(dialog.chartTable, dialog.chartType,

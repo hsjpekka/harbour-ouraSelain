@@ -88,6 +88,7 @@ Dialog {
             }
 
             ComboBox {
+                id: presentationType
                 label: qsTr("chart type")
                 width: parent.width
                 visible: chartTable !== ""
@@ -161,6 +162,7 @@ Dialog {
             }
 
             RecordFieldSelector {
+                id: primaryValue
                 //width: parent.width
                 label: chartType === DataB.chartTypeSingle?
                            qsTr("value") : qsTr("column")

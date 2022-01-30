@@ -80,7 +80,6 @@ Page {
         }
 
         property int  busy: 0
-        //property int  chartInitializing: 0
         property real factor: 1.1 // limit for highlighting trends
         property date summaryDate: new Date(new Date().getTime() - 27*60*60*1000) // show summaries of yesterday
         property int  timeScale: 0
@@ -431,6 +430,12 @@ Page {
             onLatestValueChanged: {
                 chartsList.modify(index, undefined, undefined, latestValue)
             }
+            onParametersChanged: {
+                storeChartParameters("ch" + chartNr, chTable, chType, chCol,
+                                     chCol2, chCol3, chCol4, chHigh,
+                                     chLow, maxValue, heading);
+                chartsList.modify(chartNr, chTable, heading);
+            }
             onTimeScaleRequest: {
                 chartsView.changeTimeScale()
             }
@@ -441,25 +446,7 @@ Page {
                     DataB.storeSettings(DataB.keyNrCharts, chartsList.count)
                 })
             }
-
-            function parametersChanged() {
-                storeChartParameters("ch" + chartNr, chTable, chType, chCol,
-                                     chCol2, chCol3, chCol4, chHigh,
-                                     chLow, maxValue, heading);
-                chartsList.modify(index, chTable, heading);
-                return;
-            }
         }
-    }
-
-    function chartTitle(chrt){ // cover
-        var result = chartsView.chartTitle(chrt);
-
-        if (result === undefined) {
-            result = qsTr("chart %1 not defined").arg(chrt)
-        }
-
-        return result;
     }
 
     function chartLatestValue(chrt){ // cover
@@ -467,6 +454,16 @@ Page {
 
         if (result === undefined) {
             result = "?? - " + chrt + " - ??";
+        }
+
+        return result;
+    }
+
+    function chartTitle(chrt){ // cover
+        var result = chartsView.chartTitle(chrt);
+
+        if (result === undefined) {
+            result = qsTr("chart %1 not defined").arg(chrt)
         }
 
         return result;
