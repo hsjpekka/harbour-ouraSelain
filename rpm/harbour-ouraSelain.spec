@@ -9,8 +9,8 @@ Name:       harbour-ouraselain
 # << macros
 
 Summary:    Oura Cloud
-Version:    0.4
-Release:    2
+Version:    1.0
+Release:    0
 Group:      Qt/Qt
 License:    LICENSE
 URL:        https://github.com/hsjpekka/harbour-ouraselain

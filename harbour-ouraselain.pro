@@ -13,7 +13,7 @@
 TARGET = harbour-ouraselain
 
 # touch <program>.cpp to push the updated version number forward
-VERSION = 0.4.2
+VERSION = 1.0.0
 
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
