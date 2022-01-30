@@ -5,6 +5,8 @@ import "../components/"
 
 Dialog {
     id: page
+    canAccept: chartTable > "" && chartType > "" &&
+               (chartType === DataB.chartTypeSleep || chartValue1 > "")
 
     property string chartTitle
     property string chartType

@@ -430,36 +430,71 @@ Page {
 
     Component {
         id: chartDelegate
-        HistoryChart {
-            width: page.width
-            chartNr: index
-            layout: chartsView.timeScale
-            onBarSelected: {
-                chartsView.selectColumn(chartNr, barNr, firstDate.getTime(), xMove)
+        ListItem {
+            id: graphListItem
+            contentHeight: historyPlot.height
+            width: Screen.width
+            menu: itemMenu
+
+            ContextMenu {
+                id: itemMenu
+                MenuItem {
+                    text: qsTr("settings")
+                    onClicked: {
+                        historyPlot.newChartSettings(1)
+                    }
+                }
+                MenuItem {
+                    text: (historyPlot.layout === 0) ? qsTr("dense layout") : qsTr("sparce layout")
+                    onClicked: {
+                        chartsView.changeTimeScale()
+                    }
+                }
+                MenuItem {
+                    text: qsTr("remove graph")
+                    onClicked: {
+                        var itemNr = chartNr
+                        remorseDelete(function () {
+                            removeGraph(itemNr)
+                        })
+                    }
+                }
             }
-            onHeadingChanged: {
-                chartsList.modify(index, undefined, heading, undefined)
+
+            HistoryChart {
+                id: historyPlot
+                chartNr: index
+                layout: chartsView.timeScale
+                onBarSelected: {
+                    chartsView.selectColumn(chartNr, barNr, firstDate.getTime(), xMove)
+                }
+                onHeadingChanged: {
+                    chartsList.modify(index, undefined, heading, undefined)
+                }
+                onLatestValueChanged: {
+                    chartsList.modify(index, undefined, undefined, latestValue)
+                }
+                onParametersChanged: {
+                    storeChartParameters("ch" + chartNr, chTable, chType, chCol,
+                                         chCol2, chCol3, chCol4, chHigh,
+                                         chLow, maxValue, heading);
+                    chartsList.modify(chartNr, chTable, heading);
+                }
+                onPressAndHold: {
+                    graphListItem.openMenu()
+                }
+                onRemoveRequest: {
+                    graphListItem.removeGraph(chartNr)
+                }
             }
-            onLatestValueChanged: {
-                chartsList.modify(index, undefined, undefined, latestValue)
-            }
-            onParametersChanged: {
-                storeChartParameters("ch" + chartNr, chTable, chType, chCol,
-                                     chCol2, chCol3, chCol4, chHigh,
-                                     chLow, maxValue, heading);
-                chartsList.modify(chartNr, chTable, heading);
-            }
-            onTimeScaleRequest: {
-                chartsView.changeTimeScale()
-            }
-            onRemoveRequest: {
-                var itemNr = chartNr
-                remorseDelete(function () {
-                    chartsList.remove(itemNr)
-                    DataB.storeSettings(DataB.keyNrCharts, chartsList.count)
-                })
+
+            function removeGraph(itemNr) {
+                chartsList.remove(itemNr);
+                DataB.storeSettings(DataB.keyNrCharts, chartsList.count);
+                return;
             }
         }
+
     }
 
     function chartLatestValue(chrt){ // cover

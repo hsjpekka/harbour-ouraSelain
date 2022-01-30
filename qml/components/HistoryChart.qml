@@ -4,11 +4,10 @@ import "../components"
 import "../utils/datab.js" as DataB
 import "../utils/scripts.js" as Scripts
 
-ListItem {
-    id: chartListItem
-    width: Screen.width
-    contentHeight: column.height
-    menu: itemMenu
+Item {
+    id: rootItem
+    width: parent.width
+    height: column.height
     Component.onCompleted: {
         if (_manualAddition === false) {
             setUpChart()
@@ -41,30 +40,8 @@ ListItem {
 
     signal barSelected(int barNr, int xMove)
     signal parametersChanged()
+    signal pressAndHold()
     signal removeRequest()
-    signal timeScaleRequest()
-
-    ContextMenu {
-        id: itemMenu
-        MenuItem {
-            text: qsTr("settings")
-            onClicked: {
-                newChartSettings(1)
-            }
-        }
-        MenuItem {
-            text: (layout === 0) ? qsTr("dense layout") : qsTr("sparce layout")
-            onClicked: {
-                timeScaleRequest()
-            }
-        }
-        MenuItem {
-            text: qsTr("remove graph")
-            onClicked: {
-                removeRequest(chartNr)
-            }
-        }
-    }
 
     Connections {
         id: ouraConnection
@@ -228,17 +205,13 @@ ListItem {
                 }
                 highlightFollowsCurrentItem: true
                 onBarPressAndHold: {
-                    chartListItem.openMenu()
+                    pressAndHold()
                 }
                 onBarSelected: {
-                    if (chartListItem.menuOpen) {
-                        chartListItem.closeMenu()
-                    } else {
-                        var dX, dY, dTime = flickker.interval/1000
-                        dX = 0.5*chartListItem.width - xView
-                        moveCurrentItemToCenter(dX/dTime)
-                        chartListItem.barSelected(barNr, dX)
-                    }
+                    var dX, dY, dTime = flickker.interval/1000
+                    dX = 0.5*rootItem.width - xView
+                    moveCurrentItemToCenter(dX/dTime)
+                    rootItem.barSelected(barNr, dX)
                 }
                 footer: Item {
                     width: summary.width + summary.anchors.rightMargin + Theme.paddingMedium
@@ -615,22 +588,6 @@ ListItem {
             };
         }
 
-        if (isNewChart === 2) {
-            dialog = pageStack.push(
-                    Qt.resolvedUrl("../pages/chartSettings.qml"), {
-                        "chartTable": chTable,
-                        "chartTitle": heading,
-                        "chartType": chType,
-                        "chartValue1": chCol,
-                        "chartValue2": chCol2,
-                        "chartValue3": chCol3,
-                        "chartValue4": chCol4,
-                        "chartLowBar": chLow,
-                        "chartHighBar": chHigh,
-                        "chartMaxValue": maxValue
-                    });
-        } else {
-        }
         dialog = pageStack.push(
                 Qt.resolvedUrl("../pages/chartSettings.qml"), options);
 

@@ -133,22 +133,6 @@
         <source>sleep</source>
         <translation>uni</translation>
     </message>
-    <message>
-        <source>settings</source>
-        <translation>asetukset</translation>
-    </message>
-    <message>
-        <source>dense layout</source>
-        <translation>tiivis näkymä</translation>
-    </message>
-    <message>
-        <source>sparce layout</source>
-        <translation>tilava näkymä</translation>
-    </message>
-    <message>
-        <source>remove graph</source>
-        <translation>poista kuvaaja</translation>
-    </message>
 </context>
 <context>
     <name>Info</name>
@@ -260,11 +244,27 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
     </message>
     <message>
         <source>Add new chart</source>
-        <translation type="unfinished"></translation>
+        <translation>lisää kuvaaja</translation>
     </message>
     <message>
         <source>My data</source>
-        <translation type="unfinished"></translation>
+        <translation>tietoni</translation>
+    </message>
+    <message>
+        <source>settings</source>
+        <translation>asetukset</translation>
+    </message>
+    <message>
+        <source>dense layout</source>
+        <translation>tiivis näkymä</translation>
+    </message>
+    <message>
+        <source>sparce layout</source>
+        <translation>tilava näkymä</translation>
+    </message>
+    <message>
+        <source>remove graph</source>
+        <translation>poista kuvaaja</translation>
     </message>
 </context>
 <context>
