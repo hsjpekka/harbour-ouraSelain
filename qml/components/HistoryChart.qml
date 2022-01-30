@@ -115,7 +115,9 @@ Item {
         }
         onSelectedBarChanged: {
             var dTime = flickker.interval/1000
-            if (!flickker.running) { // this chart has not been clicked
+            if (chartsView.selectedBar < 0) {
+                currentIndex = -1
+            } else if (!flickker.running) { // this chart has not been clicked
                 moveCurrentItemToCenter(chartsView.xDist/dTime)
             }
         }
@@ -209,9 +211,13 @@ Item {
                 }
                 onBarSelected: {
                     var dX, dY, dTime = flickker.interval/1000
-                    dX = 0.5*rootItem.width - xView
-                    moveCurrentItemToCenter(dX/dTime)
-                    rootItem.barSelected(barNr, dX)
+                    if (currentIndex > 0) {
+                        dX = 0.5*rootItem.width - xView
+                        moveCurrentItemToCenter(dX/dTime)
+                        rootItem.barSelected(barNr, dX)
+                    } else {
+                        rootItem.barSelected(-1, 0)
+                    }
                 }
                 footer: Item {
                     width: summary.width + summary.anchors.rightMargin + Theme.paddingMedium
@@ -549,7 +555,7 @@ Item {
         if (xVelocity) {
             minVel = chart.flickDeceleration*0.2;
             xVelocity = factor*xVelocity;
-            if (xVelocity < minVel && xVelocity >= 0) {
+            if (xVelocity < minVel && xVelocity > 0) {
                 xVelocity = minVel;
             } else if (xVelocity > -minVel && xVelocity < 0) {
                 xVelocity = -minVel;

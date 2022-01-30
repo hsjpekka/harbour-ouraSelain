@@ -178,7 +178,7 @@ Page {
         VerticalScrollDecorator {}
 
         function changeTimeScale() { // 0 - days grouped by week, 1 - days grouped by month
-            if (timeScale > 1) {
+            if (timeScale >= 1) {
                 timeScale = 0;
             } else {
                 timeScale++;
@@ -240,8 +240,13 @@ Page {
         function selectColumn(chartNr, barNr, firstDateTime, xMove) {
             var chart, i=0;
 
-            summaryDate = new Date(firstDateTime + barNr*msDay);
-            xDist = xMove;
+            if (barNr >= 0) {
+                summaryDate = new Date(firstDateTime + barNr*msDay);
+                xDist = xMove;
+            } else {
+                xDist = 0;
+            }
+
             selectedBar = barNr;
 
             return;
