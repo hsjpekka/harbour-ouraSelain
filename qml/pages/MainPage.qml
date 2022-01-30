@@ -27,7 +27,11 @@ Page {
         anchors.fill: parent
         width: parent.width
         header: trends
-        footer: ListItem {
+        footer: Item {
+            height: Theme.paddingLarge
+        }
+
+        /*footer: ListItem {
             width: parent.width
             contentHeight: footerTxt.height + 2*Theme.paddingMedium
             menu: ContextMenu {
@@ -47,7 +51,7 @@ Page {
                 color: Theme.secondaryColor
                 anchors.centerIn: parent
             }
-        }
+        } // */
         delegate: chartDelegate
         model: ListModel {
             id: chartsList
@@ -124,13 +128,15 @@ Page {
 
         PushUpMenu {
             MenuItem {
-                text: qsTr("About")
+                text: qsTr("Add new chart")
                 onClicked: {
-                    pageContainer.push(Qt.resolvedUrl("Info.qml"))
+                    _manualAddition = true;
+                    chartsList.add(1);
+                    DataB.storeSettings(DataB.keyNrCharts, chartsList.count)
                 }
             }
             MenuItem {
-                text: qsTr("Settings")
+                text: qsTr("My data")
                 onClicked: {
                     var subPage = pageContainer.push(Qt.resolvedUrl("Settings.qml"),
                                                  { "token": personalAccessToken })
@@ -155,11 +161,18 @@ Page {
                 }
             }
             MenuItem {
+                text: qsTr("About")
+                onClicked: {
+                    pageContainer.push(Qt.resolvedUrl("Info.qml"))
+                }
+            }
+            /*
+            MenuItem {
                 text: qsTr("Refresh")
                 onClicked: {
                     refreshOuraCloud()
                 }
-            }
+            }// */
         }
 
         VerticalScrollDecorator {}

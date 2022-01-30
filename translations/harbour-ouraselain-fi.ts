@@ -251,28 +251,20 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
         <translation>tietoja</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>asetukset</translation>
-    </message>
-    <message>
-        <source>Refresh</source>
-        <translation>päivitä</translation>
-    </message>
-    <message>
         <source>date</source>
         <translation>päivä</translation>
     </message>
     <message>
-        <source>add new chart</source>
-        <translation>lisää uusi kuvaaja</translation>
-    </message>
-    <message>
-        <source>long press to add a chart</source>
-        <translation>paina pitkään lisätäksesi kuvaajan</translation>
-    </message>
-    <message>
         <source>chart %1 not defined</source>
         <translation>kuvaajaa %1 ei määritelty</translation>
+    </message>
+    <message>
+        <source>Add new chart</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>My data</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
