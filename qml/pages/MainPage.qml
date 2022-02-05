@@ -459,8 +459,8 @@ Page {
                     text: qsTr("remove graph")
                     onClicked: {
                         var itemNr = chartNr
-                        remorseDelete(function () {
-                            removeGraph(itemNr)
+                        graphListItem.remorseDelete(function () {
+                            graphListItem.removeGraph(itemNr)
                         })
                     }
                 }
