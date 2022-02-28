@@ -14,31 +14,32 @@ ApplicationWindow
     cover: coverPage
     allowedOrientations: defaultAllowedOrientations
     Component.onCompleted: {
-        var firstDateToRead
         if (openDb() === 0) {
             readSettings()
             settingsReady()
-            firstDateToRead = setDatesToRead()
-            readOldRecords(firstDateToRead)
+            //startReadingRecords()
+            console.log("melkolailla valmista")
+            oldRecordsReader.start()
         }
         //coverPage.currentChart = 0
         //coverPage.title = DataB.getSetting("ch0" + DataB.keyChartTitle) //initialPage.chartTitle(coverPage.currentChart)
         if (personalAccessToken > "") {
-            downloadOuraCloud()
+            //downloadOuraCloud()
         } else {
             setUpNow()
         }
-        startingUp = false
+        //startingUp = false
     }
 
     signal storedDataRead()
     signal settingsReady()
 
-    property int daysToRead: 0//365//14
+    property int daysToRead: 0// if 0, reads all, else daysToRead at a time
     property var db: null
     property int msDay: 24*60*60*1000
     property string personalAccessToken: ""
-    property bool startingUp: true
+    property int readRecords: 0
+    //property bool startingUp: true
 
     MainPage {
         id: mainPage
@@ -85,6 +86,16 @@ ApplicationWindow
 
         property date firstDateToRead
         property date latestDateToRead
+    }
+
+    Timer {
+        id: oldRecordsReader
+        interval: 1000
+        running: false
+        repeat: false
+        onTriggered: {
+            startReadingRecords()
+        }
     }
 
     Connections {
@@ -172,6 +183,8 @@ ApplicationWindow
             result = 0;
         }
 
+        readRecords += i;
+
         return result;
     }
 
@@ -234,6 +247,14 @@ ApplicationWindow
             })
         });
 
+        return;
+    }
+
+    function startReadingRecords() {
+        var firstDateToRead;
+        firstDateToRead = setDatesToRead();
+        readOldRecords(firstDateToRead);
+        storedDataRead();
         return;
     }
 

@@ -150,6 +150,29 @@ Page {
            }
        }
 
+       PushUpMenu {
+           MenuItem {
+               text: "tyhjennä luetut"
+               onClicked: {
+                   var mj;
+                   mj = "DELETE FROM ouraCloud ";
+
+                   if(DataB.dbas === null) {
+                       return -1;
+                   } else {
+                       try {
+                           DataB.dbas.transaction(function(tx){
+                               tx.executeSql(mj);
+                           });
+                       } catch (err) {
+                           console.log("Error deleting from ouraCloud: " + err);
+                           log("  -- " + mj + " -- ")
+                       }
+                   }
+               }
+           }
+       }
+
        model: records
        header: Component {
            PageHeader {

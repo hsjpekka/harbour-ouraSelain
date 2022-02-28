@@ -246,7 +246,7 @@ function readCloudDb(type, ymdp1, ymdp2, verbal) {
         result = {"rows": {"length": -3}};
     } else {
         if (verbal) {
-            log(qsTr("Read %1 oura-records.").arg(tbl.rows.length));
+            log(qsTr("Read oura-records from %1 days.").arg(tbl.rows.length));
         }
         result = tbl;
     }

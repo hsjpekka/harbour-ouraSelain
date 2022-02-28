@@ -11,6 +11,7 @@ Item {
     Component.onCompleted: {
         if (_manualAddition === false) {
             setUpChart()
+            //readStoredRecords()
         } else {
             newChartSettings(0)
         }
@@ -27,15 +28,17 @@ Item {
     property alias chTable: chart.table
     property alias chType: chart.chType
     property alias currentIndex: chart.currentIndex
-    property alias daysToFetch: dataFetcher.daysToFetch
+    property int   daysToFetch: 1
     property alias factor: summary.factor
     property alias firstDate: chart.firstDate
+    property alias firstItemDate: chart.firstItemDate
     property alias heading: title.text
     property alias lastDate: chart.lastDate
     property alias latestValue: chart.fullDayValue
     property alias layout: chart.timeScale
     property alias maxValue: chart.maxValue
     property alias setValueLabel: chart.setValueLabel
+    property bool  startingUp: true
     property alias valuesList: chart.model
 
     signal barSelected(int barNr, int xMove)
@@ -48,45 +51,21 @@ Item {
         target: ouraCloud
         onFinishedActivity: {
             if (chTable === DataB.keyActivity) {
-                if (!ouraConnection.reloaded) {
-                    ouraCloud.setDateConsidered()
-                    newData()
-                    fillData()
-                } else {
-                    fillData() // updates the averages
-                    oldData()
-                    ouraConnection.reloaded = ouraCloud.isLoading()
-                }
+                readNewRecords()
             }
         }
-        onFinishedBedTimes: {
+        //onFinishedBedTimes: {
             //ouraCloud.setDateConsidered();
             //_refreshedBedTimes++;
-        }
+        //}
         onFinishedReadiness: {
             if (chTable === DataB.keyReadiness) {
-                if (!ouraConnection.reloaded) {
-                    ouraCloud.setDateConsidered()
-                    fillData()
-                    newData()
-                } else {
-                    fillData() // updates the averages
-                    oldData()
-                    ouraConnection.reloaded = ouraCloud.isLoading()
-                }
+                readNewRecords()
             }
         }
         onFinishedSleep: {
             if (chTable === DataB.keySleep) {
-                if (!ouraConnection.reloaded) {
-                    ouraCloud.setDateConsidered()
-                    fillData()
-                    newData()
-                } else {
-                    fillData() // updates the averages
-                    oldData()
-                    ouraConnection.reloaded = ouraCloud.isLoading()
-                }
+                readNewRecords()
             }
         }
 
@@ -96,22 +75,30 @@ Item {
     Connections {
         target: applicationWindow
         onStoredDataRead: {
-            fillData()
-            oldData() // chart
-            //    dataFetcher.start()
+            console.log("luetut kuvaajaan")
+            //readStoredRecords()
+            //var readDays
+            //summary.fillData()
+            //chart.reserveColumns()
+            //readDays = chart.fillData(rootItem.daysToFetch) // chart
+            //console.log("viimeksi luettu " + readDays)
+            //if (readDays >= daysToFetch) {
+            dataFetcher.start()
+            //}
         }
         onSettingsReady: {
             setUpChart()
+            console.log("kuvaaja valmisteltu")
         }
     }
 
     Connections {
         target: chartsView
-        onCloudReloaded: {
+        onCloudReloading: {
             ouraConnection.reloaded = true;
         }
         onTimeScaleChanged: {
-            changeTimeScale(chartsView.timeScale)
+            chart.changeGrouping(chartsView.timeScale)
         }
         onSelectedBarChanged: {
             var dTime = flickker.interval/1000
@@ -143,6 +130,21 @@ Item {
         running: false
         repeat: true
         onTriggered: {
+            var unFetchedDays, dtf
+
+            if (interval === 1*1000) {
+                readStoredRecords(rootItem.daysToFetch)
+                interval = 0.3*1000
+            } else {
+                //dtf = rootItem.daysToFetch
+                unFetchedDays = chart.fillData(rootItem.daysToFetch)//rootItem.daysToFetch)
+                console.log("ch" + chartNr + ": " + chTable + ", unfetched " + unFetchedDays + " days, " + rootItem.daysToFetch)//rootItem.daysToFetch)
+                if (unFetchedDays <= 0) {
+                    stop()
+                    console.log("all old data read")
+                }
+            }
+
             /*
             if (chartsView.busy === 0) {
                 chartsView.busy++
@@ -152,25 +154,22 @@ Item {
                     chart.enabled = false
                 }
                 console.log("vanhat tiedot kuvaajaan " + chartNr)
-                oldData() // chart
+                fillData() // chart
                 console.log("vanhat tiedot luettu kuvaajaan " + chartNr)
                 chart.visible = true
                 chart.enabled = true
-                oldDataRead()
+                fillDataRead()
                 running = false
                 chartsView.busy--
             } // */
 
             //if (chartNr === chartsView.chartInitializing) {
             //    fillData() // update yearly average in summary
-            //    oldData() // chart
-            //    oldDataRead()
+            //    fillData() // chart
+            //    fillDataRead()
             //    running = false
             //}
         }
-
-        property date lastDayToFetch: new Date()
-        property int daysToFetch: 30
     }
 
     Column {
@@ -211,7 +210,7 @@ Item {
                 }
                 onBarSelected: {
                     var dX, dY, dTime = flickker.interval/1000
-                    if (currentIndex > 0) {
+                    if (currentIndex >= 0) {
                         dX = 0.5*rootItem.width - xView
                         moveCurrentItemToCenter(dX/dTime)
                         rootItem.barSelected(barNr, dX)
@@ -223,29 +222,79 @@ Item {
                     width: summary.width + summary.anchors.rightMargin + Theme.paddingMedium
                 }
 
-                BusyIndicator {
-                    anchors.centerIn: parent
-                    size: BusyIndicatorSize.Medium
-                    running: parent.loading
-                }
-
-                property date firstDate: new Date()
-                property date lastDate: new Date()
-                property bool loading: false
-                property string table: DataB.keyReadiness
+                property string barHi: ""
+                property string barLow: ""
+                property bool   checkLastDate: true
+                property string chType: DataB.chartTypeSingle
                 property string col: "score"
                 property string col2: ""
                 property string col3: ""
                 property string col4: ""
-                property string barHi: ""
-                property string barLow: ""
-                property string chType: DataB.chartTypeSingle
+                property date   firstItemDate
+                property date   firstDate
                 property string fullDayValue
-                property real selectedX: 0
-                property real selectedY: 0
-                property int timeScale: 0 // 0 - days grouped by week, 1 - days grouped by month
-                property int wideBar: Theme.fontSizeMedium
-                property int narrowBar: 1.5*Theme.paddingSmall
+                property date   lastDate
+                property bool   loading: false
+                property int    narrowBar: 1.5*Theme.paddingSmall
+                property real   selectedX: 0
+                property real   selectedY: 0
+                property string table: DataB.keyReadiness
+                property int    timeScale: 0 // 0 - days grouped by week, 1 - days grouped by month
+                property int    wideBar: Theme.fontSizeMedium
+
+                function addDay(i, dt, checkValue) {
+                    // i=0 => at the beginning, i=count => at the end
+                    // dt - date
+                    // checkValue > 0 => read the value from ouraCloud
+                    var dayStr, result, sct, week, highBar, lowBar, val1, val2, val3, val4;
+
+                    highBar = 0;
+                    lowBar = 0;
+                    val1 = 0;
+                    val2 = 0;
+                    val3 = 0;
+                    val4 = 0;
+
+                    if (timeScale === 0) {
+                        week = Scripts.weekNumberAndYear(dt.getTime());
+                        sct = qsTr("%1, wk %2").arg(week[0]).arg(week[1]);
+                    } else {
+                        sct = dt.getFullYear() + ", " + Qt.locale().monthName(dt.getMonth(), Locale.ShortFormat);
+                    }
+                    dayStr = Scripts.dayStr(dt.getDay());
+
+                    if (chType === DataB.chartTypeSingle) {
+                        if (checkValue > 0) {
+                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, dt));
+                        }
+                        result = insertData(i, sct, val1, Theme.highlightColor, dayStr);
+                    } else if (chType === DataB.chartTypeMin ||
+                               chType === DataB.chartTypeMaxmin) {
+                        if (checkValue > 0) {
+                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, dt));
+                            lowBar = Scripts.ouraToNumber(ouraCloud.value(table, barLow, dt));
+                            if (chType === DataB.chartTypeMin) {
+                                highBar = lowBar;
+                            } else {
+                                highBar = Scripts.ouraToNumber(ouraCloud.value(table, barHi, dt));
+                            }
+                        }
+                        result = insertDataVariance(i, sct, val1, "red", highBar,
+                                            lowBar, Theme.secondaryColor, dayStr);
+                    } else if (chType === DataB.chartTypeSleep) {
+                        if (checkValue > 0) {
+                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, dt, -2)); // -1 is_longest==1, -2 sum of all suitable entries
+                            val2 = Scripts.ouraToNumber(ouraCloud.value(table, col2, dt, -2)); // -1 is_longest==1
+                            val3 = Scripts.ouraToNumber(ouraCloud.value(table, col3, dt, -2)); // -1 is_longest==1
+                            val4 = Scripts.ouraToNumber(ouraCloud.value(table, col4, dt, -2)); // -1 is_longest==1
+                        }
+                        result = insertData(i, sct, val1, "DarkGreen", dayStr, val2,
+                                   "Green", val3, "LightGreen", val4, "LightYellow",
+                                   Scripts.secToHM(val1 + val2 + val3));
+                    }
+
+                    return result;
+                }
 
                 function changeGrouping(newTimeScale) {
                     // if timeScale = 0, section = "year, week"
@@ -278,11 +327,12 @@ Item {
                     return;
                 }
 
+                /*
                 function newData() {
                     // ignore data before lastDate
                     // average over the day readiness periods
                     var val1, val2, val3, val4, highBar, lowBar, day, sct;
-                    var now = new Date(), dayMs = 24*60*60*1000, dum;
+                    var now = new Date(), dayMs = 24*60*60*1000, result;
                     var first, last, diffMs, diffDays, i;
                     var week;
 
@@ -294,7 +344,21 @@ Item {
                     // set firstDate equal to the first date read from records
                     // and last equal to current date or the date of an empty list of records
                     first = ouraCloud.firstDate(table);
-                    first.setTime(first.getTime() + 12*60*60*1000); // 12:00 to avoid problems between summer and winter
+                    first.setHours(4); // 04:00 to avoid problems between summer and winter
+                    // trying to avoid long loops if the date format is wrong
+                    if (first.getFullYear() < 100) {
+                        first.setFullYear(first.getFullYear() + 2000);
+                    }
+                    // read max daysToFetch days to the chart
+                    diffMs = now.getTime() - first.getTime();
+                    diffDays = Math.ceil(diffMs/dayMs);
+                    if (diffDays > daysToFetch) {
+                        result = diffDays - daysToFetch;
+                        diffDays = daysToFetch;
+                        first.setTime(first.getTime() + result*dayMs);
+                        firstDate = first;
+                    }
+
                     if (first < firstDate) {
                         firstDate = first;
                     }
@@ -302,12 +366,8 @@ Item {
                         lastDate = first;
                     }
                     last = lastDate;
+                    last.setHours(4);
 
-                    // trying to avoid long loops if the date format is wrong
-                    if (first.getFullYear() < 100) {
-                        first.setFullYear(first.getFullYear() + 2000);
-                        last.setFullYear(last.getFullYear() + 2000);
-                    }
                     diffMs = now.getTime() - lastDate.getTime();
                     diffDays = Math.ceil(diffMs/dayMs);
 
@@ -391,33 +451,312 @@ Item {
                     loading = false;
                     positionViewAtEnd();
 
+                    currentIndex = -1;
+
+                    return result;
+                }
+                //*/
+
+                function fillData(maxDays) {
+                    // returns the number of days updated
+                    // sets lastDate == last date in Oura Cloud or in the stored records
+                    // sets firstDate == first date read into the chart
+                    var val1, val2, val3, val4, highBar, lowBar, diffMs;
+                    var dayStr, firstDB, fetchDate, sct, week, i, iN, nPost, nPre;
+                    var hourMs = 60*60*1000, dayMs = 24*hourMs, overwriteDays;
+
+                    console.log("ch" + chartNr + ", max " + maxDays + " vika-4 = " + chart.read(count - 4, "barValue"))
+                    fetchDate = new Date();
+                    if (fetchDate.getHours() < 4) { // oura-day changes at 04
+                        fetchDate.setTime(fetchDate.getTime() - dayMs);
+                    }
+                    fetchDate.setHours(7);
+
+                    if (checkLastDate || !(lastDate.getDate() > 0)) { // if new data has come from oura cloud
+                        checkLastDate = false;
+                        if (lastDate.getDate() > 0) { // if lastDate has been set
+                            firstDB = lastDate;
+                            lastDate = new Date(ouraCloud.lastDate(table).getTime() + 7*hourMs);
+                            console.log(" täällä " + lastDate.getDate())
+                        } else {
+                            lastDate = new Date(ouraCloud.lastDate(table).getTime() + 7*hourMs);
+                            firstDB = lastDate;
+                            console.log(" täälläpä " + lastDate.getDate())
+                        }
+                        if (table === DataB.keyActivity) { // update today
+                            firstDB.setTime(firstDB.getTime() - dayMs);
+                        }
+
+                        diffMs = fetchDate.getTime() - firstDB.getTime();
+                        nPost = Math.round(diffMs/dayMs); // some new days have been read
+                    } else {
+                        nPost = 0; //only fill old records
+                    }
+
+                    // update new days
+                    loading = true;
+                    i = 0;
+                    while(i < nPost) {
+                        modifyDay(count - 1 - i, fetchDate);
+                        fetchDate.setTime(fetchDate.getTime() - dayMs);
+                        i++;
+                    }
+
+                    firstDB = ouraCloud.firstDate(table);
+                    if (!(firstDB.getDate() > 0)) { // date === 1-31
+                        return -1;
+                    }
+                    firstDB.setHours(4); // avoid light-saving-time changes, and oura-day changes at 04
+
+                    if (firstDate.getDate() > 0) {
+                        fetchDate.setTime(firstDate.getTime() - dayMs);
+                        fetchDate.setHours(7);
+                        diffMs = fetchDate.getTime() - firstDB.getTime();
+                        nPre = Math.round(diffMs/dayMs) + 1;
+                    } else {
+                        nPre = count - nPost;
+                    }
+
+                    /*
+                    if (firstDate === undefined){// || ouraConnection.reloaded) {// charts empty or rewrite chart
+                        // reserveColumns() creates chart columns from ouraCloud.firstDate to the current date
+                        //if (ouraConnection.reloaded) {
+                        //    fetchDate = ouraCloud.firstDate(table);
+                        //} else {
+                            fetchDate = new Date();
+                            if (fetchDate.getHours() > 3) { // if count = 0, make sure diffDays > 0
+                                fetchDate.setTime(fetchDate.getTime() + dayMs);
+                            }
+                            fetchDate.setTime(fetchDate.getTime() - count*dayMs);
+                            //fetchDate = new Date();
+                            //if (fetchDate.getHours() < 4) {
+                            //    fetchDate.setTime(fetchDate.getTime() - dayMs)
+                            //}
+                            //if (table !== DataB.keyActivity) {
+                            //    fetchDate.setTime(fetchDate.getTime() - dayMs)
+                            //}
+                        //}
+                        fetchDate.setHours(7);
+
+                        //overwriteDays = 1;
+                        lastDate = ouraCloud.lastDate(table);
+                        firstDate = lastDate;
+                    } else {
+                        fetchDate = firstDate;
+                        fetchDate.setHours(7);
+                        overwriteDays = 0;
+                    }
+
+                    if (firstDate.getTime() <= firstDB.getTime()) {
+                        return 0;
+                    }
+
+                    diffMs = fetchDate.getTime() - firstDB.getTime(); // first in chart - first in cloud
+                    diffDays = Math.floor(diffMs/dayMs) + overwriteDays;
+                    if (maxDays > 0 && diffDays > maxDays) {
+                        diffDays = maxDays;
+                    }
+
+                    iN = Math.round((lastDate.getTime() - fetchDate.getTime())/dayMs);
+                    i = count - iN - 1;
+
+
+                    indexStore = currentIndex;
+                    //*/
+
+                    //console.log("ch" + chartNr + " - " + table + ", iMax " + maxDays + ", nPost " + nPost + ", nPre " + nPre);
+                    // update old days
+                    if (maxDays < 0 || maxDays === undefined) {
+                        maxDays = nPre;
+                    }
+
+                    i = 0;
+                    while(i < nPre && i < maxDays) {
+                        i++;
+                        modifyDay(nPre - i, fetchDate);
+                        fetchDate.setTime(fetchDate.getTime() - dayMs);
+                    }
+
+                    /*
+                    while (i >= count - (iN + diffDays) ) {
+                        //if (timeScale === 0) {
+                        //    week = Scripts.weekNumberAndYear(fetchDate.getTime());
+                        //    sct = qsTr("%1, wk %2").arg(week[0]).arg(week[1]);
+                        //} else {
+                        //    sct = fetchDate.getFullYear() + ", " + Qt.locale().monthName(fetchDate.getMonth(), Locale.ShortFormat);
+                        //}
+                        //dayStr = Scripts.dayStr(fetchDate.getDay());
+
+                        if (chType === DataB.chartTypeSingle) {
+                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, fetchDate));
+                            modify(i, "barValue", val1);
+                        } else if (chType === DataB.chartTypeMin || chType === DataB.chartTypeMaxmin) {
+                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, fetchDate));
+                            lowBar = Scripts.ouraToNumber(ouraCloud.value(table, barLow, fetchDate));
+                            if (chType === DataB.chartTypeMin) {
+                                highBar = lowBar;
+                            } else {
+                                highBar = Scripts.ouraToNumber(ouraCloud.value(table, barHi, fetchDate));
+                            }
+
+                            modify(i, "barValue", val1);
+                            modify(i, "localMax", highBar);
+                            modify(i, "localMin", lowBar);
+                        } else if (chType === DataB.chartTypeSleep) {
+                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, fetchDate, -2)); // -1 is_longest==1, -2 sum of all suitable entries
+                            val2 = Scripts.ouraToNumber(ouraCloud.value(table, col2, fetchDate, -2)); // -1 is_longest==1
+                            val3 = Scripts.ouraToNumber(ouraCloud.value(table, col3, fetchDate, -2)); // -1 is_longest==1
+                            val4 = Scripts.ouraToNumber(ouraCloud.value(table, col4, fetchDate, -2)); // -1 is_longest==1
+
+                            modify(i, "barValue", val1);
+                            modify(i, "bar2Value", val2);
+                            modify(i, "bar3Value", val3);
+                            modify(i, "bar4Value", val4);
+                            modify(i, "valLabel", Scripts.secToHM(val1 + val2 + val3));
+                        }
+
+                        fetchDate.setTime(fetchDate.getTime() - dayMs);
+                        i--;
+                    }
+
+                    //*/
+
+                    //if (i < 0 && diffDays > 0 ) {
+                    //    fetchDate.setTime(fetchDate.getTime() + dayMs);
+                    //}
+
+                    loading = false;
+                    fetchDate.setTime(fetchDate.getTime() + dayMs);
+                    firstDate = fetchDate;
+
+                    console.log("ch" + chartNr + " - " + table + ", nPost " + nPost + ", nPre " + nPre + ", vika " + lastDate.getDate() + "." + (lastDate.getMonth() + 1) + "., i= " + i + " eka " + firstDate.getDate() );
+
+                    return nPre - i;
+                }
+
+                function modifyDay(i, t) {
+                    // i=0 => at the beginning, i=count => at the end
+                    // dt - date
+                    // checkValue > 0 => read the value from ouraCloud
+                    var result, highBar, lowBar, val1, val2, val3, val4;
+
+                    if (chType === DataB.chartTypeSingle) {
+                        val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, t));
+                        result = modify(i, "barValue", val1);
+                    } else if (chType === DataB.chartTypeMin ||
+                               chType === DataB.chartTypeMaxmin) {
+                        val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, t));
+                        lowBar = Scripts.ouraToNumber(ouraCloud.value(table, barLow, t));
+                        if (chType === DataB.chartTypeMin) {
+                            highBar = lowBar;
+                        } else {
+                            highBar = Scripts.ouraToNumber(ouraCloud.value(table, barHi, t));
+                        }
+                        result = modify(i, "barValue", val1);
+                        modify(i, "localMin", lowBar);
+                        modify(i, "localMax", highBar);
+                    } else if (chType === DataB.chartTypeSleep) {
+                        val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, t, -2)); // -1 is_longest==1, -2 sum of all suitable entries
+                        val2 = Scripts.ouraToNumber(ouraCloud.value(table, col2, t, -2)); // -1 is_longest==1
+                        val3 = Scripts.ouraToNumber(ouraCloud.value(table, col3, t, -2)); // -1 is_longest==1
+                        val4 = Scripts.ouraToNumber(ouraCloud.value(table, col4, t, -2)); // -1 is_longest==1
+                        result = modify(i, "barValue", val1);
+                        modify(i, "bar2Value", val2);
+                        modify(i, "bar3Value", val3);
+                        modify(i, "bar4Value", val4);
+                        modify(i, "valLabel", Scripts.secToHM(val1 + val2 + val3));
+                    }
+
+                    return result;
+                }
+
+                function reScale(newMax) {
+                    chart.maxValue = newMax;
                     return;
                 }
 
-                function oldData() {
-                    var val1, val2, val3, val4, highBar, lowBar, diffMs, diffDays, dayStr, sct;
-                    var first, last, dayMs = 24*60*60*1000, week, i=0;
+                function reserveColumns() {
+                    // creates a column for each day from ouraCloud.firstDate() to now
+                    var val1, val2, val3, val4, highBar, lowBar, diffMs, totalDays;
+                    var dayStr, sct, first, last, dumDay, week, i, indexStorage, nPre, nPost;
+                    var hourMs = 60*60*1000, dayMs = 24*hourMs;
 
-                    loading = true;
+                    //console.log(" " + " vika = " + chart.read(count - 1, "barValue"))
+
+                    indexStorage = currentIndex;
+
                     first = ouraCloud.firstDate(table);
+                    first.setHours(4);
+                    firstItemDate = first;
 
-                    if (count === 0) {
+                    /*
+                    if (firstDate === undefined) {
                         last = new Date();
-                        if (first.getFullYear() < 10) {
-                            first = last;
+                        if (last.getHours() > 3) { // make sure totalDays > 0
+                            last.setTime(last.getTime() + dayMs);
                         }
-                        lastDate = last;
-                    } else if (firstDate <= first) {
-                        return;
+                        last.setTime(last.getTime() - count*dayMs);
+                        //if (last.getHours() < 4) {
+                        //    last.setTime(last.getTime() - dayMs);
+                        //}
+                        //if (table !== DataB.keyActivity) {
+                        //    last.setTime(last.getTime() - dayMs)
+                        //}
                     } else {
                         last = firstDate;
+                    }
+                    //*/
+                    last = new Date();
+                    if (last.getHours() < 4) { // oura-day changes at 04
                         last.setTime(last.getTime() - dayMs);
                     }
+                    last.setHours(7);
 
                     diffMs = last.getTime() - first.getTime();
-                    diffDays = Math.ceil(diffMs/dayMs);
+                    totalDays = Math.floor(diffMs/dayMs) + 1;
 
-                    while (i< diffDays) {
+                    if (count >= totalDays) {
+                        return totalDays - count;
+                    }
+
+                    loading = true;
+
+                    // create empty columns at the now-end of the graph
+                    if (lastDate.getDate() > 0) {
+                        //lastDate.setHours(9);
+                        dumDay = lastDate;
+                        diffMs = last.getTime() - lastDate.getTime();
+                        nPost = Math.floor(diffMs/dayMs);
+                        i = 0;
+                        while (i < nPost) {
+                            dumDay.setTime(dumDay.getTime() + dayMs);
+                            addDay(count, dumDay);
+                            i++;
+                        }
+                    }
+
+                    // create empty columns at the past-end of the graph
+                    // if firstDate is not set, prepare totalDays of columns
+                    if (firstDate.getDate() > 0) {
+                        //firstDate.setHours(9);
+                        diffMs = firstDate.getTime() + 7*hourMs - first.getTime();
+                        nPre = Math.floor(diffMs/dayMs);
+                        first.setTime(firstDate.getTime() - dayMs);
+                    } else {
+                        if (count > 0) {
+                            chartData.clear()
+                        }
+                        first = last;
+                        nPre = totalDays;
+                    }
+
+                    i = 0;
+                    while (i < nPre) {
+                        addDay(0, first);
+                        /*
+                        if (ouraConnection.reloaded) {
+                            last.setTime(last.getTime() - dayMs);
+                        }
                         if (timeScale === 0) {
                             week = Scripts.weekNumberAndYear(last.getTime());
                             sct = qsTr("%1, wk %2").arg(week[0]).arg(week[1]);
@@ -427,51 +766,60 @@ Item {
                         dayStr = Scripts.dayStr(last.getDay());
 
                         if (chType === DataB.chartTypeSingle) {
-                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, last));
+                            val1 = 0;
                             insertData(0, sct, val1, Theme.highlightColor, dayStr);
                         } else if (chType === DataB.chartTypeMin || chType === DataB.chartTypeMaxmin) {
-                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, last));
-                            lowBar = Scripts.ouraToNumber(ouraCloud.value(table, barLow, last));
-                            if (chType === DataB.chartTypeMin) {
-                                highBar = lowBar;
-                            } else {
-                                highBar = Scripts.ouraToNumber(ouraCloud.value(table, barHi, last));
-                            }
+                            val1 = 0;
+                            lowBar = 0;
+                            highBar = 0;
 
                             insertDataVariance(0, sct, val1, "red", highBar, lowBar,
-                                               (lowBar === 0? "transparent" : Theme.secondaryColor),
+                                               Theme.secondaryColor,
                                                dayStr);
                         } else if (chType === DataB.chartTypeSleep) {
-                            val1 = Scripts.ouraToNumber(ouraCloud.value(table, col, last, -2)); // -1 is_longest==1, -2 sum of all suitable entries
-                            val2 = Scripts.ouraToNumber(ouraCloud.value(table, col2, last, -2)); // -1 is_longest==1
-                            val3 = Scripts.ouraToNumber(ouraCloud.value(table, col3, last, -2)); // -1 is_longest==1
-                            val4 = Scripts.ouraToNumber(ouraCloud.value(table, col4, last, -2)); // -1 is_longest==1
+                            val1 = 0;
+                            val2 = 0;
+                            val3 = 0;
+                            val4 = 0;
 
                             insertData(0, sct, val1, "DarkGreen", dayStr, val2, "Green",
                                        val3, "LightGreen", val4, "LightYellow",
                                        Scripts.secToHM(val1 + val2 + val3));
                         }
+                        //*/
 
+                        first.setTime(first.getTime() - dayMs);
                         i++;
-                        last.setTime(last.getTime() - dayMs);
                     }
-                    last.setTime(last.getTime() + dayMs);
-                    firstDate = last;
 
                     loading = false;
-                    chart.positionViewAtEnd();
-                    return;
-                }
+                    //if (indexStorage >= 0) {
+                    //      currentIndex = indexStorage + totalDays;
+                    //      chart.positionViewAtIndex(currentIndex, ListView.Contain);
+                    //} else {
+                    //      chart.positionViewAtEnd();
+                    //}
 
-                function reScale(newMax) {
-                    chart.maxValue = newMax;
-                    return;
+                    if (!lastDate.getDate() > 0) {
+                        chart.positionViewAtEnd();
+                    }
+
+                    console.log("ch" + chartNr + " - " + table + ", nPost " + nPost + ", nPre " + nPre + ", kaikki " + totalDays + ", vika " + lastDate.getDate() + "." + (lastDate.getMonth() + 1) + "., eka " + firstDate.getDate() + "." + (firstDate.getMonth() + 1) + "." + " vika = " + chart.read(count - 4, "barValue"));
+
+                    if (startingUp) {
+                        startingUp = false;
+                        currentIndex = count - 1;
+                        rootItem.barSelected(currentIndex, 0)
+                    }
+
+                    return totalDays;
                 }
 
                 function reset() {
                     chartData.clear();
                     loading = true;
-                    oldData();
+                    reserveColumns();
+                    fillData();
                     loading = false;
                     return;
                 }
@@ -542,13 +890,9 @@ Item {
         }
     }
 
-    function changeTimeScale(newTimeScale) { // 0 - days grouped by week, 1 - days grouped by month
-        return chart.changeGrouping(newTimeScale);
-    }
-
-    function fillData() {
-        return summary.fillData()
-    }
+    //function changeTimeScale(newTimeScale) { // 0 - days grouped by week, 1 - days grouped by month
+    //    return chart.changeGrouping(newTimeScale);
+    //}
 
     function moveCurrentItemToCenter(xVelocity) {
         var factor = 2.1, maxVel = 1100, minVel, yVelocity = 0;
@@ -621,7 +965,7 @@ Item {
                 if (dialog.chartMaxValue !== undefined &&
                         maxValue !== dialog.chartMaxValue) {
                     parametersChanged();
-                    rescale(dialog.chartMaxValue);
+                    chart.rescale(dialog.chartMaxValue);
                 }
             }
         });
@@ -638,14 +982,6 @@ Item {
         return;
     }
 
-    function newData() {
-        return chart.newData();
-    }
-
-    function oldData() {
-        return chart.oldData();
-    }
-
     function positionViewAtIndex(barNr, position) {
         if (position === undefined) {
             position = ListView.Center;
@@ -654,8 +990,35 @@ Item {
         return chart.positionViewAtIndex(barNr, position);
     }
 
-    function rescale(newMax) {
-        return chart.reScale(newMax);
+    //function rescale(newMax) {
+    //    return chart.reScale(newMax);
+    //}
+
+    function readNewRecords() {
+        chart.checkLastDate = true
+        summary.fillData()
+        chart.reserveColumns()
+        if (!ouraConnection.reloaded) {
+            chart.fillData(0)
+        } else {
+            dataFetcher.stop()
+            chart.fillData()
+            ouraConnection.reloaded = false
+        }
+        return;
+    }
+
+    function readStoredRecords() {
+        var unReadDays;
+        summary.fillData();
+        chart.reserveColumns();
+        unReadDays = chart.fillData(rootItem.daysToFetch);
+        console.log("lukematta " + unReadDays);
+        if (unReadDays >= daysToFetch) {
+            dataFetcher.start();
+        }
+
+        return unReadDays;
     }
 
     function reset() {
@@ -700,6 +1063,8 @@ Item {
         if (chType === DataB.chartTypeSleep) {
             setValueLabel = true;
         }
+
+        chart.currentIndex = -1;
 
         return;
     }

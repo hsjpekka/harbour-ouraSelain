@@ -9,18 +9,57 @@ Page {
 
     allowedOrientations: Orientation.All
 
+    Component.onCompleted: {
+        console.log("oncompleted")
+    }
+
     signal refreshOuraCloud()
     signal openSettings()
 
     property alias chartCount: chartsView.count
     property bool  _manualAddition: false
+    //property bool  startingUp: true
 
     Connections {
         target: applicationWindow
         onSettingsReady: {
             chartsView.setUpCharts()
         }
+        onStoredDataRead: {
+            //startingUp = false
+        }
     }
+
+    /*
+    Connections {
+        id: ouraConnection
+        target: ouraCloud
+        onFinishedActivity: {
+            if (chTable === DataB.keyActivity) {
+                //readNewRecords()
+                ouraConnection.recieved++
+            }
+        }
+        //onFinishedBedTimes: {
+            //ouraCloud.setDateConsidered();
+            //_refreshedBedTimes++;
+        //}
+        onFinishedReadiness: {
+            if (chTable === DataB.keyReadiness) {
+                //readNewRecords()
+                ouraConnection.recieved++
+            }
+        }
+        onFinishedSleep: {
+            if (chTable === DataB.keySleep) {
+                //readNewRecords()
+                ouraConnection.recieved++
+            }
+        }
+
+        property int recieved: 0
+    }
+    // */
 
     SilicaListView {
         id: chartsView
@@ -91,7 +130,7 @@ Page {
         property int  xDist: 0
 
         signal summaryDateModified()
-        signal cloudReloaded()
+        signal cloudReloading()
 
         PullDownMenu {
             MenuItem {
@@ -155,8 +194,8 @@ Page {
                             ouraCloud.downloadOuraCloud()
                         })
                     })
-                    subPage.cloudReloaded.connect(function () {
-                        chartsView.cloudReloaded();
+                    subPage.cloudReloading.connect(function () {
+                        chartsView.cloudReloading();
                     })
                 }
             }
@@ -166,7 +205,7 @@ Page {
                     pageContainer.push(Qt.resolvedUrl("Info.qml"))
                 }
             }
-            /*
+            //*
             MenuItem {
                 text: qsTr("Refresh")
                 onClicked: {
@@ -183,7 +222,7 @@ Page {
             } else {
                 timeScale++;
             }
-            storeListParameters(selectedBar, timeScale);
+            storeListParameters(undefined, timeScale);
             return timeScale;
         }
 
@@ -277,7 +316,7 @@ Page {
                 target: ouraCloud
                 onFinishedActivity: {
                     chartsView.busy++
-                    ouraCloud.setDateConsidered()
+                    //ouraCloud.setDateConsidered()
                     activityTrend.fillData()
                     chartsView.busy--
                 }
@@ -289,13 +328,13 @@ Page {
                 }
                 onFinishedReadiness: {
                     chartsView.busy++
-                    ouraCloud.setDateConsidered()
+                    //ouraCloud.setDateConsidered()
                     readinessTrend.fillData()
                     chartsView.busy--
                 }
                 onFinishedSleep: {
                     chartsView.busy++
-                    ouraCloud.setDateConsidered()
+                    //ouraCloud.setDateConsidered()
                     sleepTrend.fillData()
                     chartsView.busy--
                 }
@@ -435,71 +474,84 @@ Page {
 
     Component {
         id: chartDelegate
-        ListItem {
-            id: graphListItem
-            contentHeight: historyPlot.height
+        Item {
             width: Screen.width
-            menu: itemMenu
+            height: graphListItem.height
 
-            ContextMenu {
-                id: itemMenu
-                MenuItem {
-                    text: qsTr("settings")
-                    onClicked: {
-                        historyPlot.newChartSettings(1)
+            ListItem {
+                id: graphListItem
+                contentHeight: historyPlot.height
+                width: parent.width
+                menu: itemMenu
+                opacity: startingUp ? Theme.opacityLow : 1
+
+                property alias startingUp: historyPlot.startingUp
+
+                ContextMenu {
+                    id: itemMenu
+                    MenuItem {
+                        text: qsTr("settings")
+                        onClicked: {
+                            historyPlot.newChartSettings(1)
+                        }
+                    }
+                    MenuItem {
+                        text: (historyPlot.layout === 0) ? qsTr("dense layout") : qsTr("sparce layout")
+                        onClicked: {
+                            chartsView.changeTimeScale()
+                        }
+                    }
+                    MenuItem {
+                        text: qsTr("remove graph")
+                        onClicked: {
+                            var itemNr = chartNr
+                            graphListItem.remorseDelete(function () {
+                                graphListItem.removeGraph(itemNr)
+                            })
+                        }
                     }
                 }
-                MenuItem {
-                    text: (historyPlot.layout === 0) ? qsTr("dense layout") : qsTr("sparce layout")
-                    onClicked: {
-                        chartsView.changeTimeScale()
+
+                HistoryChart {
+                    id: historyPlot
+                    chartNr: index
+                    layout: chartsView.timeScale
+                    onBarSelected: {
+                        chartsView.selectColumn(chartNr, barNr, firstItemDate.getTime(), xMove)
+                    }
+                    onHeadingChanged: {
+                        chartsList.modify(index, undefined, heading, undefined)
+                    }
+                    onLatestValueChanged: {
+                        chartsList.modify(index, undefined, undefined, latestValue)
+                    }
+                    onParametersChanged: {
+                        storeChartParameters("ch" + chartNr, chTable, chType, chCol,
+                                             chCol2, chCol3, chCol4, chHigh,
+                                             chLow, maxValue, heading);
+                        chartsList.modify(chartNr, chTable, heading);
+                    }
+                    onPressAndHold: {
+                        graphListItem.openMenu()
+                    }
+                    onRemoveRequest: {
+                        graphListItem.removeGraph(chartNr)
                     }
                 }
-                MenuItem {
-                    text: qsTr("remove graph")
-                    onClicked: {
-                        var itemNr = chartNr
-                        graphListItem.remorseDelete(function () {
-                            graphListItem.removeGraph(itemNr)
-                        })
-                    }
+
+                function removeGraph(itemNr) {
+                    chartsList.remove(itemNr);
+                    DataB.storeSettings(DataB.keyNrCharts, chartsList.count);
+                    return;
                 }
             }
 
-            HistoryChart {
-                id: historyPlot
-                chartNr: index
-                layout: chartsView.timeScale
-                onBarSelected: {
-                    chartsView.selectColumn(chartNr, barNr, firstDate.getTime(), xMove)
-                }
-                onHeadingChanged: {
-                    chartsList.modify(index, undefined, heading, undefined)
-                }
-                onLatestValueChanged: {
-                    chartsList.modify(index, undefined, undefined, latestValue)
-                }
-                onParametersChanged: {
-                    storeChartParameters("ch" + chartNr, chTable, chType, chCol,
-                                         chCol2, chCol3, chCol4, chHigh,
-                                         chLow, maxValue, heading);
-                    chartsList.modify(chartNr, chTable, heading);
-                }
-                onPressAndHold: {
-                    graphListItem.openMenu()
-                }
-                onRemoveRequest: {
-                    graphListItem.removeGraph(chartNr)
-                }
-            }
-
-            function removeGraph(itemNr) {
-                chartsList.remove(itemNr);
-                DataB.storeSettings(DataB.keyNrCharts, chartsList.count);
-                return;
+            BusyIndicator {
+                anchors.centerIn: parent
+                size: BusyIndicatorSize.Medium
+                running: graphListItem.startingUp
             }
         }
-
     }
 
     function chartLatestValue(chrt){ // cover
@@ -540,13 +592,12 @@ Page {
     }
 
     function storeListParameters(nrCharts, currentTimeScale) {
-        if (currentTimeScale) {
-            DataB.storeSettings(DataB.keyChartTimeScale, currentTimeScale + "");
-        }
         if (nrCharts) {
             DataB.storeSettings(DataB.keyNrCharts, chartsView.count + "");
         }
-
+        if (currentTimeScale >= 0) {
+            DataB.storeSettings(DataB.keyChartTimeScale, currentTimeScale + "");
+        }
         return;
     }
 }

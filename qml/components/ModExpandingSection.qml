@@ -1,7 +1,6 @@
 /****************************************************************************************
 **
 ** Copyright (C) 2015 Jolla Ltd.
-** Contact: Bea Lam <bea.lam@jollamobile.com>
 ** All rights reserved.
 **
 ** This file is part of Sailfish Silica UI component package.
@@ -34,8 +33,8 @@
 
 import QtQuick 2.0
 import Sailfish.Silica 1.0
-//import "private"
-//import "private/Util.js" as Util
+//import "private" // ModExpandingSection
+//import "private/Util.js" as Util // ModExpandingSection
 
 /*
 If this is made into public API, consider having 'content' as a variant that can be url/component/item
@@ -46,7 +45,7 @@ Item {
     id: root
 
     property alias title: titleLabel.text
-    property alias font: titleLabel.font
+    property alias font: titleLabel.font // ModExpandingSection
     property alias content: loader
 
     property bool expanded
@@ -64,7 +63,7 @@ Item {
     height: contentContainer.height + button.contentHeight
 
     onParentChanged: {
-        //_group = Util.findParentWithProperty(root, "__silica_expandingsectiongroup")
+        //_group = Util.findParentWithProperty(root, "__silica_expandingsectiongroup") // ModExpandingSection
     }
 
     onExpandedChanged: {

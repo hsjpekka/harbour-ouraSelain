@@ -266,6 +266,10 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
         <source>remove graph</source>
         <translation>poista kuvaaja</translation>
     </message>
+    <message>
+        <source>Refresh</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>ReadinessList</name>
@@ -772,8 +776,8 @@ Ohjelmalla ei voi lukea tietoja sormuksesta, eikä ladata niitä palvelimelle.</
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Read %1 oura-records.</source>
-        <translation>Luettu %1 oura-tallennetta.</translation>
+        <source>Read oura-records from %1 days.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

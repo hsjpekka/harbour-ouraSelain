@@ -158,7 +158,12 @@ double ouraCloudApi::average(QString type, QString key, int days, int year1, int
     cType = valueType(type);
 
     if (!date.isValid()) { // year == 0
-        date = QDate::currentDate().addDays(-1);
+        if (cType == Activity || cType == BedTimes || cType == Readiness || cType == Sleep) {
+            date = firstDateIn(cType, -1);
+        }
+        if (!date.isValid()) {
+            date = QDate::currentDate().addDays(-1); // the current day is not included
+        }
         //if (cType == Activity || cType == BedTimes || cType == Readiness || cType == Sleep) {
         //    date = lastDate(cType);
         //}
@@ -479,9 +484,11 @@ QDate ouraCloudApi::firstDate(int first) // the first or last date in the latest
     return date1;
 }
 
-QDate ouraCloudApi::firstDateIn(ContentType type, int first) // the first or last date in the latest summary reply
+QDate ouraCloudApi::firstDateIn(ContentType type, int first)
 {
-
+    // first = 0 -> the first,
+    //       = 1 -> the second, ...
+    //       = -1 -> the last ...
     QDate date1(0,0,0);
     int i, iN;
     //QString key;
@@ -536,9 +543,9 @@ void ouraCloudApi::fromCloudActivity()
         addRecord(Activity, cloudValue);
     }
 
-    if ( !cloudValue.isUndefined()) {
-        dateConsidered = lastDate();
-    }
+    //if ( !cloudValue.isUndefined()) {
+    //    dateConsidered = lastDate();
+    //}
 
     isLoadingActivity = false;
     emit finishedActivity();
@@ -560,9 +567,9 @@ void ouraCloudApi::fromCloudBedTimes()
         addRecord(BedTimes, cloudValue.toObject());
     }
 
-    if ( !cloudValue.isUndefined()) {
-        dateConsidered = lastDate();
-    }
+    //if ( !cloudValue.isUndefined()) {
+    //    dateConsidered = lastDate();
+    //}
 
     isLoadingBedTimes = false;
     emit finishedBedTimes();
@@ -584,9 +591,9 @@ void ouraCloudApi::fromCloudReadiness()
         addRecord(Readiness, cloudValue.toObject());
     }
 
-    if ( !cloudValue.isUndefined()) {
-        dateConsidered = lastDate();
-    }
+    //if ( !cloudValue.isUndefined()) {
+    //    dateConsidered = lastDate();
+    //}
 
     isLoadingReadiness = false;
     emit finishedReadiness();
@@ -607,9 +614,9 @@ void ouraCloudApi::fromCloudSleep()
         addRecord(Sleep, cloudValue.toObject());
     }
 
-    if ( !cloudValue.isUndefined()) {
-        dateConsidered = lastDate();
-    }
+    //if ( !cloudValue.isUndefined()) {
+    //    dateConsidered = lastDate();
+    //}
 
     isLoadingSleep = false;
     emit finishedSleep();
@@ -1078,7 +1085,7 @@ QDate ouraCloudApi::setDateConsidered(QDate date)
     if (date.isValid()) {
         dateConsidered = date;
     } else {
-        dateConsidered = lastDate(1);
+        dateConsidered = lastDate(1); // the last full day = the 2nd last day
     }
     return dateConsidered;
 }
@@ -1103,7 +1110,7 @@ void ouraCloudApi::setStatus(const QString newStatus)
 }
 
 QDate ouraCloudApi::setStartDate(int year, int month, int day)
-{
+{ // year 1 = 1, 2001 = 2001, month = 1..12, day = 1..31
     queryStartDate.setDate(year, month, day);
     return queryStartDate;
 }

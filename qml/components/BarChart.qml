@@ -89,8 +89,8 @@ SilicaListView {
             else if (showVariance === 0 || showVariance === 1)
                 showVariance += 2;
             vClrStr = "" + mmClr;
-            insert(i, {"group": se, "barValue": v1*1.0, "barColor": clrStr, "barLabel": lbl,
-                       "bar2Value": v2*1.0, "bar2Color": clr2Str,
+            return insert(i, {"group": se, "barValue": v1*1.0, "barColor": clrStr,
+                       "barLabel": lbl, "bar2Value": v2*1.0, "bar2Color": clr2Str,
                        "bar3Value": v3*1.0, "bar3Color": clr3Str,
                        "bar4Value": v4*1.0, "bar4Color": clr4Str,
                        "localMax": vMax*1.0, "localMin": vMin*1.0,
@@ -128,7 +128,7 @@ SilicaListView {
         "bar3Color", "bar4Value", "bar4Color", "localMax", "localMin",
         "maxMinColor", "valLabel"]
     readonly property int showLabelNever: 0
-    readonly property int showLabelOnClick: 0
+    readonly property int showLabelOnClick: 1
     readonly property int showLabelAlways: 2
 
     signal barSelected(int barNr, real barValue, string barLabel, real xView, real yView)
@@ -396,7 +396,30 @@ SilicaListView {
         if (validDataElements.indexOf(key) >= 0) {
             listData.setProperty(i, key, value);
             result = true;
+            //if (i === 17) {
+            //    console.log(" tallennetaan '" + key + "' = " + listData.get(i)[key])
+            //}
         }
+        return result;
+    }
+
+    function read(i, key) {
+        var obj, result;
+
+        if (i < 0 || i >= count) {
+            console.log("can't read value, i = " + i)
+        } else {
+            obj = listData.get(i);
+
+            if (key === "" || key === undefined) {
+                //console.log("ei hakusanaa")
+                result = obj;
+            } else if (key in obj) {
+                //console.log("hakusana " + key + " löytyi " + obj[key])
+                result = obj[key];
+            }
+        }
+
         return result;
     }
 }

@@ -9,24 +9,28 @@ Page {
     Component.onCompleted: {
         getUserData()
         changeToken = false // tokenField.text is changed during set up
+        /*
         if (tokenField.text === "") {
             tokenField.readOnly = false
         }
+        // */
     }
 
     Component.onDestruction: {
         if (changeToken) {
-            token = tokenField.text
-            setToken(tokenField.text)
+            token = tokenSection.token
+            setToken(token)
         }
     }
 
     property bool changeToken: false
+    property string newToken
     property string token
     property bool reloaded: false
 
+    signal cloudReloading(date firstReloaded)
     signal setToken(string newToken)
-    signal cloudReloaded(date firstReloaded)
+    signal resetToken()
 
     function getUserData() {
         var str = ouraCloud.myName(qsTr("name unknown"));
@@ -47,23 +51,23 @@ Page {
         target: ouraCloud
         onFinishedActivity: {
             activityReady.ready = true
-            downloadLabel.visible = ouraCloud.isLoading()
+            downloadLabel.showLoading = ouraCloud.isLoading()
         }
         onFinishedSleep: {
             sleepReady.ready = true
-            downloadLabel.visible = ouraCloud.isLoading()
+            downloadLabel.showLoading = ouraCloud.isLoading()
         }
         onFinishedReadiness: {
             readinessReady.ready = true
-            downloadLabel.visible = ouraCloud.isLoading()
+            downloadLabel.showLoading = ouraCloud.isLoading()
         }
         onFinishedBedTimes: {
             bedtimesReady.ready = true
-            downloadLabel.visible = ouraCloud.isLoading()
+            downloadLabel.showLoading = ouraCloud.isLoading()
         }
         onFinishedInfo: {
             infoReady.ready = true
-            downloadLabel.visible = ouraCloud.isLoading()
+            downloadLabel.showLoading = ouraCloud.isLoading()
             getUserData()
         }
     }
@@ -78,7 +82,7 @@ Page {
             MenuItem {
                 text: qsTr("refresh data")
                 onClicked: {
-                    ouraCloud.setPersonalAccessToken(tokenField.text)
+                    ouraCloud.setPersonalAccessToken(tokenSection.token)
                     ouraCloud.downloadOuraCloud("userinfo")
                 }
             }
@@ -86,7 +90,8 @@ Page {
             MenuItem {
                 text: qsTr("reset token")
                 onClicked: {
-                    tokenField.text = token
+                    tokenSection.token = token
+                    resetToken()
                     changeToken = false
                 }
             }
@@ -146,62 +151,92 @@ Page {
                 value: ""
             }
 
-            DetailItem {
+            /*DetailItem {
                 id: myToken
                 label: qsTr("token")
                 value: tokenField.text
                 highlighted: changeToken
+            }//*/
+
+            ModExpandingSection {
+                id: tokenSection
+                title: qsTr("Personal access token")
+                expanded: token > "" ? false : true
+                //font.color: Theme.secondaryColor
+                font.pixelSize: Theme.fontSizeMedium
+                content.sourceComponent: Column {
+                    spacing: Theme.paddingSmall
+
+                    Connections {
+                        target: page
+                        onResetToken: {
+                            tokenField.text = tokenSection.token
+                        }
+                    }
+
+                    LinkedLabel {
+                        color: Theme.secondaryHighlightColor
+                        width: parent.width - 2*x
+                        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                        x: Theme.horizontalPageMargin
+                        plainText: qsTr("Get your token from %1. And copy it to the field below.").arg("https://cloud.ouraring.com/account/login?next=%2Fpersonal-access-tokens")
+                    }
+
+                    TextField {
+                        id: tokenField
+                        placeholderText: qsTr("for example: %1").arg("A3EDG66YA...")
+                        readOnly: text > ""
+                        text: token
+                        labelVisible: true
+                        label: readOnly? qsTr("press to change"): qsTr("token")
+                        EnterKey.onClicked: {
+                            focus = false
+                            readOnly = true
+                        }
+                        width: parent.width
+                        onPressAndHold: {
+                            readOnly = false
+                        }
+                        onTextChanged: {
+                            changeToken = true
+                            tokenSection.token = text
+                        }
+                    }
+
+                }
+
+                property string token: value
             }
 
-            SectionHeader {
+            /*SectionHeader {
                 text: qsTr("Personal access token")
-            }
-
-            LinkedLabel {
-                color: Theme.secondaryHighlightColor
-                width: parent.width - 2*x
-                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                x: Theme.horizontalPageMargin
-                plainText: qsTr("Get your token from %1. And copy it to the field below.").arg("https://cloud.ouraring.com/account/login?next=%2Fpersonal-access-tokens")
-            }
-
-            Item {
-                height: Theme.paddingSmall
-                width: 1
-            }
-
-            TextField {
-                id: tokenField
-                placeholderText: qsTr("for example: %1").arg("A3EDG66YA...")
-                readOnly: true
-                text: token
-                labelVisible: true
-                label: readOnly? qsTr("press to change"): qsTr("token")
-                EnterKey.onClicked: {
-                    focus = false
-                    readOnly = true
-                }
-                width: parent.width
-                onPressAndHold: {
-                    readOnly = false
-                }
-                onTextChanged: {
-                    changeToken = true
-                }
-            }
+            }//*/
 
             SectionHeader {
                 text: qsTr("Download old data")
             }
 
             Label {
+                id: txtDataFrom
                 color: Theme.secondaryHighlightColor
                 width: parent.width - 2*x
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 x: Theme.horizontalPageMargin
                 text: qsTr("The first downloaded record from OuraCloud is from %1. " +
                            "To retrieve older records choose the date below."
-                           ).arg(Qt.formatDate(ouraCloud.firstDate(),Qt.DefaultLocaleShortDate))
+                           ).arg(fromDate)
+
+                property string fromDate: updateFromDate(1) // Qt.formatDate(ouraCloud.firstDate(),Qt.DefaultLocaleShortDate)
+
+                function updateFromDate(initialize) {
+                    var result;
+                    result = Qt.formatDate(ouraCloud.firstDate(),Qt.DefaultLocaleShortDate)
+                    if (initialize === undefined) {
+                        fromDate = result;
+                    }
+
+                    return result;
+                }
             }
 
             ValueButton {
@@ -212,18 +247,16 @@ Page {
                     var dialog = pageContainer.push("Sailfish.Silica.DatePickerDialog", {
                                                     "date": firstDate } )
                     dialog.accepted.connect( function() {
-                        value = dialog.dateText
-                        firstDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88)
-                        year = dialog.year
-                        month = dialog.month
-                        day = dialog.day
+                        value = dialog.dateText;
+                        firstDate = new Date(dialog.year, dialog.month-1, dialog.day, 13, 43, 43, 88);
+                        //year = dialog.year;
+                        //month = dialog.month;
+                        //day = dialog.day;
                     } )
                 }
 
                 property date firstDate: ouraCloud.firstDate()
-                property int  year: firstDate.getFullYear()
-                property int  month: firstDate.getMonth()
-                property int  day: firstDate.getDate()
+
             }
 
             Button {
@@ -231,40 +264,48 @@ Page {
                 text: qsTr("Fetch old records")
                 anchors.horizontalCenter: parent.horizontalCenter
                 onClicked: {
-                    downloadLabel.visible = true
+                    var year, month, date
+                    downloadLabel.showLoading = true
                     activityReady.ready = false
                     sleepReady.ready = false
                     readinessReady.ready = false
                     bedtimesReady.ready = false
                     infoReady.ready = false
 
-                    ouraCloud.setStartDate(dateButton.year, dateButton.month, dateButton.day)
+                    cloudReloading(dateButton.firstDate)
+                    year = dateButton.firstDate.getFullYear();
+                    month = dateButton.firstDate.getMonth() + 1;
+                    date = dateButton.firstDate.getDate();
+                    ouraCloud.setStartDate(year, month, date)
                     ouraCloud.downloadOuraCloud()
+                    //dateButton.updateDate()
+
                     // move to show the rotating circle
                     flickingArea.scrollToBottom()
-
                     reloaded = true
-                    cloudReloaded(dateButton.firstDate)
                 }
-            }
-
-            Item {
-                height: Theme.itemSizeMedium
-                width: 1
-                anchors.horizontalCenter: parent.horizontalCenter
             }
 
             Item {
                 id: downloadLabel
                 width: parent.width - 2*x
-                height: dlLabel.height + dlIndicator.height + dlIndicator.anchors.topMargin
+                height: showLoading? dlLabel.height + dlIndicator.height
+                                     + dlIndicator.anchors.topMargin : Theme.paddingLarge
                 x: Theme.horizontalPageMargin
                 visible: false
+                onShowLoadingChanged: {
+                    if (showLoading === false) {
+                        txtDataFrom.updateFromDate()
+                    }
+                }
+
+                property bool showLoading: false
 
                 Label {
                     id: dlLabel
                     color: Theme.highlightColor
                     text: qsTr("downloading records")
+                    visible: parent.showLoading
                     anchors {
                         horizontalCenter: parent.horizontalCenter
                         top: parent.top
@@ -273,7 +314,8 @@ Page {
 
                 BusyIndicator {
                     id: dlIndicator
-                    running: parent.visible
+                    running: parent.showLoading
+                    visible: running
                     size: BusyIndicatorSize.Large
                     anchors {
                         top: dlLabel.bottom
@@ -285,6 +327,7 @@ Page {
                 Label {
                     id: infoReady
                     text: qsTr("info")
+                    visible: parent.showLoading
                     color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
                     anchors {
                         bottom: dlIndicator.verticalCenter
@@ -299,6 +342,7 @@ Page {
                 Label {
                     id: activityReady
                     text: qsTr("activity")
+                    visible: parent.showLoading
                     color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
                     anchors {
                         top: dlIndicator.verticalCenter
@@ -313,6 +357,7 @@ Page {
                 Label {
                     id: bedtimesReady
                     text: qsTr("bedtimes")
+                    visible: parent.showLoading
                     color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
                     anchors {
                         horizontalCenter: dlIndicator.horizontalCenter
@@ -326,6 +371,7 @@ Page {
                 Label {
                     id: readinessReady
                     text: qsTr("readiness")
+                    visible: parent.showLoading
                     color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
                     anchors {
                         top: dlIndicator.verticalCenter
@@ -340,6 +386,7 @@ Page {
                 Label {
                     id: sleepReady
                     text: qsTr("sleep")
+                    visible: parent.showLoading
                     color: ready? Theme.highlightDimmerColor : Theme.secondaryHighlightColor
                     anchors {
                         bottom: dlIndicator.verticalCenter
